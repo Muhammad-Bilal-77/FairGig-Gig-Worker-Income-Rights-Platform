@@ -1,0 +1,177 @@
+services:
+  # ── Auth Service ───────────────────────────────────────
+  - type: web
+    name: auth-service
+    env: docker
+    dockerContext: .
+    dockerfilePath: services/auth-service/Dockerfile
+    plan: starter
+    envVars:
+      - key: AUTH_PORT
+        value: 4001
+      - key: AUTH_DB_URL
+        fromDatabase:
+          name: fairgig-db
+          property: connectionString
+      - key: JWT_ACCESS_SECRET
+        generateValue: true
+      - key: JWT_REFRESH_SECRET
+        generateValue: true
+      - key: FRONTEND_URL
+        fromService:
+          type: static
+          name: fairgig-frontend
+          property: url
+
+  # ── Earnings Service ────────────────────────────────────
+  - type: web
+    name: earnings-service
+    env: docker
+    dockerContext: .
+    dockerfilePath: services/earnings-service/Dockerfile
+    plan: starter
+    envVars:
+      - key: EARNINGS_PORT
+        value: 4002
+      - key: EARNINGS_DB_URL
+        fromDatabase:
+          name: fairgig-db
+          property: connectionString
+      - key: READONLY_DB_URL
+        fromDatabase:
+          name: fairgig-db
+          property: connectionString
+      - key: JWT_ACCESS_SECRET
+        fromService:
+          type: web
+          name: auth-service
+          property: envVar
+          envVarKey: JWT_ACCESS_SECRET
+      - key: ANOMALY_SERVICE_URL
+        value: http://anomaly-service:4003
+
+  # ── Anomaly Service ────────────────────────────────────
+  - type: pservice
+    name: anomaly-service
+    env: docker
+    dockerContext: .
+    dockerfilePath: services/anomaly-service/Dockerfile
+    plan: starter
+    envVars:
+      - key: ANOMALY_PORT
+        value: 4003
+      - key: READONLY_DB_URL
+        fromDatabase:
+          name: fairgig-db
+          property: connectionString
+      - key: JWT_ACCESS_SECRET
+        fromService:
+          type: web
+          name: auth-service
+          property: envVar
+          envVarKey: JWT_ACCESS_SECRET
+
+  # ── Grievance Service ──────────────────────────────────
+  - type: web
+    name: grievance-service
+    env: docker
+    dockerContext: .
+    dockerfilePath: services/grievance-service/Dockerfile
+    plan: starter
+    envVars:
+      - key: GRIEVANCE_PORT
+        value: 4004
+      - key: GRIEVANCE_DB_URL
+        fromDatabase:
+          name: fairgig-db
+          property: connectionString
+      - key: JWT_ACCESS_SECRET
+        fromService:
+          type: web
+          name: auth-service
+          property: envVar
+          envVarKey: JWT_ACCESS_SECRET
+
+  # ── Analytics Service ─────────────────────────────────
+  - type: pservice
+    name: analytics-service
+    env: docker
+    dockerContext: .
+    dockerfilePath: services/analytics-service/Dockerfile
+    plan: starter
+    envVars:
+      - key: ANALYTICS_DB_URL
+        fromDatabase:
+          name: fairgig-db
+          property: connectionString
+      - key: READONLY_DB_URL
+        fromDatabase:
+          name: fairgig-db
+          property: connectionString
+      - key: JWT_ACCESS_SECRET
+        fromService:
+          type: web
+          name: auth-service
+          property: envVar
+          envVarKey: JWT_ACCESS_SECRET
+
+  # ── Certificate Service ────────────────────────────────
+  - type: web
+    name: certificate-service
+    env: docker
+    dockerContext: .
+    dockerfilePath: services/certificate-service/Dockerfile
+    plan: starter
+    envVars:
+      - key: CERTIFICATE_DB_URL
+        fromDatabase:
+          name: fairgig-db
+          property: connectionString
+      - key: READONLY_DB_URL
+        fromDatabase:
+          name: fairgig-db
+          property: connectionString
+      - key: JWT_ACCESS_SECRET
+        fromService:
+          type: web
+          name: auth-service
+          property: envVar
+          envVarKey: JWT_ACCESS_SECRET
+      - key: AUTH_SERVICE_URL
+        value: http://auth-service:4001
+
+  # ── Frontend (Static Site) ──────────────────────────────
+  - type: static
+    name: fairgig-frontend
+    env: node
+    buildCommand: cd frontend && npm install && npm run build
+    staticPublishPath: frontend/dist
+    envVars:
+      - key: VITE_AUTH_API_URL
+        fromService:
+          type: web
+          name: auth-service
+          property: url
+      - key: VITE_GRIEVANCE_API_URL
+        fromService:
+          type: web
+          name: grievance-service
+          property: url
+      - key: VITE_EARNINGS_API_URL
+        fromService:
+          type: web
+          name: earnings-service
+          property: url
+      - key: VITE_CERTIFICATE_API_URL
+        fromService:
+          type: web
+          name: certificate-service
+          property: url
+
+databases:
+  - name: fairgig-db
+    plan: starter
+
+redis:
+  - name: fairgig-redis
+    plan: starter

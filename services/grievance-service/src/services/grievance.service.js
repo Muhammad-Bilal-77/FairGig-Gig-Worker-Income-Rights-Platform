@@ -1,8 +1,11 @@
 // Core business logic for grievance service
 
 import { randomUUID } from 'crypto';
+import { EventEmitter } from 'events';
 import { pool, query, withTransaction } from '../db.js';
 import { complaintCounter, escalationCounter } from '../metrics.js';
+
+export const notificationEmitter = new EventEmitter();
 
 /**
  * Create a new complaint
@@ -12,23 +15,24 @@ import { complaintCounter, escalationCounter } from '../metrics.js';
  * @param {boolean} anonymous - If true, poster_id is stored as NULL
  * @returns {object} Complaint with similar_complaints array
  */
-export async function createComplaint(client, posterId, data, anonymous) {
-  const { platform, category, title, description, city_zone } = data;
+export async function createComplaint(client, posterId, posterName, data, anonymous) {
+  const { platform, category, title, description, city_zone, images = [] } = data;
   
   const id = randomUUID();
   const now = new Date();
   
   // Store NULL if anonymous, otherwise store posterId
   const actualPosterId = anonymous ? null : posterId;
+  const actualPosterName = anonymous ? 'Anonymous Worker' : posterName;
   
   const result = await client.query(
     `INSERT INTO grievance_schema.complaints
-     (id, poster_id, platform, category, title, description, city_zone, created_at, updated_at)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-     RETURNING id, poster_id, platform, category, title, description, city_zone, status,
+     (id, poster_id, poster_name, platform, category, title, description, city_zone, images, created_at, updated_at)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+     RETURNING id, poster_id, poster_name, platform, category, title, description, city_zone, images, status,
                upvote_count, created_at, updated_at,
                escalated_by, escalated_at, resolved_by, resolved_at`,
-    [id, actualPosterId, platform, category, title, description, city_zone || null, now, now]
+    [id, actualPosterId, actualPosterName, platform, category, title, description, city_zone || null, JSON.stringify(images), now, now]
   );
   
   const complaint = result.rows[0];
@@ -53,8 +57,8 @@ export async function createComplaint(client, posterId, data, anonymous) {
  * @param {object} pagination - { page, limit }
  * @returns {object} { complaints, total, page, pages }
  */
-export async function listComplaints(client, filters, pagination) {
-  const { platform, category, status, city_zone } = filters;
+export async function listComplaints(client, filters, pagination, requestingUserId = null) {
+  const { platform, category, status, city_zone, poster_id } = filters;
   const { page = 1, limit = 20 } = pagination;
   
   // Validate limit
@@ -82,6 +86,10 @@ export async function listComplaints(client, filters, pagination) {
     where.push(`city_zone = $${paramCount++}`);
     params.push(city_zone);
   }
+  if (poster_id) {
+    where.push(`poster_id = $${paramCount++}`);
+    params.push(poster_id);
+  }
   
   const whereClause = where.length > 0 ? `WHERE ${where.join(' AND ')}` : '';
   
@@ -95,16 +103,20 @@ export async function listComplaints(client, filters, pagination) {
   
   // Get paginated results
   const listParams = [...params, actualLimit, offset];
-  const result = await client.query(
-    `SELECT id, poster_id, platform, category, title, description, city_zone, status,
-            upvote_count, created_at, updated_at,
-            escalated_by, escalated_at, resolved_by, resolved_at
-     FROM grievance_schema.complaints
-     ${whereClause}
-     ORDER BY upvote_count DESC, created_at DESC
-     LIMIT $${paramCount} OFFSET $${paramCount + 1}`,
-    listParams
-  );
+  const query = `
+    SELECT c.id, c.poster_id, c.poster_name, c.platform, c.category, c.title, c.description, c.city_zone, c.images, c.status,
+           c.upvote_count, c.created_at, c.updated_at,
+           c.escalated_by, c.escalated_at, c.resolved_by, c.resolved_at
+           ${requestingUserId ? `, EXISTS(SELECT 1 FROM grievance_schema.complaint_upvotes cu WHERE cu.complaint_id = c.id AND cu.user_id = $${paramCount + 2}) as is_upvoted` : ', FALSE as is_upvoted'}
+    FROM grievance_schema.complaints c
+    ${whereClause}
+    ORDER BY c.upvote_count DESC, c.created_at DESC
+    LIMIT $${paramCount} OFFSET $${paramCount + 1}
+  `;
+  
+  if (requestingUserId) listParams.push(requestingUserId);
+
+  const result = await client.query(query, listParams);
   
   // Fetch tags for each complaint
   const complaints = await Promise.all(
@@ -129,7 +141,7 @@ export async function listComplaints(client, filters, pagination) {
  */
 export async function getComplaint(client, id) {
   const result = await client.query(
-    `SELECT id, poster_id, platform, category, title, description, city_zone, status,
+    `SELECT id, poster_id, poster_name, platform, category, title, description, city_zone, images, status,
             upvote_count, created_at, updated_at,
             escalated_by, escalated_at, resolved_by, resolved_at
      FROM grievance_schema.complaints WHERE id = $1`,
@@ -201,22 +213,46 @@ export async function deleteComplaint(client, id, workerId) {
  * @param {boolean} add - True to add upvote, false to remove
  * @returns {object} { upvote_count }
  */
-export async function toggleUpvote(client, complaintId, userId, add) {
-  if (add) {
-    // INSERT with ON CONFLICT DO NOTHING for idempotency
+export async function toggleUpvote(client, complaintId, userId, userName) {
+  // Check if upvote exists
+  const checkResult = await client.query(
+    `SELECT 1 FROM grievance_schema.complaint_upvotes WHERE complaint_id = $1 AND user_id = $2`,
+    [complaintId, userId]
+  );
+  
+  const exists = checkResult.rows.length > 0;
+  
+  if (exists) {
+    // REMOVE upvote
     await client.query(
-      `INSERT INTO grievance_schema.complaint_upvotes (complaint_id, user_id, created_at)
-       VALUES ($1, $2, NOW())
-       ON CONFLICT (complaint_id, user_id) DO NOTHING`,
+      `DELETE FROM grievance_schema.complaint_upvotes WHERE complaint_id = $1 AND user_id = $2`,
       [complaintId, userId]
     );
   } else {
-    // DELETE upvote
+    // ADD upvote
     await client.query(
-      `DELETE FROM grievance_schema.complaint_upvotes
-       WHERE complaint_id = $1 AND user_id = $2`,
+      `INSERT INTO grievance_schema.complaint_upvotes (complaint_id, user_id, created_at)
+       VALUES ($1, $2, NOW())`,
       [complaintId, userId]
     );
+
+    // Notify the poster
+    const posterResult = await client.query(
+      `SELECT poster_id, title FROM grievance_schema.complaints WHERE id = $1`,
+      [complaintId]
+    );
+    
+    if (posterResult.rows.length > 0 && posterResult.rows[0].poster_id && posterResult.rows[0].poster_id !== userId) {
+      const { poster_id, title } = posterResult.rows[0];
+      await createNotification(
+        client,
+        poster_id,
+        'upvote',
+        userName,
+        `${userName} upvoted your report: "${title}"`,
+        `/app/worker/community?complaint=${complaintId}`
+      );
+    }
   }
   
   // Recalculate upvote_count
@@ -232,7 +268,7 @@ export async function toggleUpvote(client, complaintId, userId, add) {
     [upvoteCount, complaintId]
   );
   
-  return { upvote_count: upvoteCount };
+  return { upvote_count: upvoteCount, added: !exists };
 }
 
 /**
@@ -387,4 +423,108 @@ export async function findSimilar(client, platform, category) {
     id: row.id,
     title: row.title,
   }));
+}
+
+/**
+ * Add a comment to a complaint and notify the poster
+ * @param {object} client - DB client
+ * @param {string} complaintId - Complaint ID
+ * @param {string} authorId - Author ID
+ * @param {string} authorName - Author name
+ * @param {string} body - Comment text
+ * @returns {object} Created comment
+ */
+export async function addComment(client, complaintId, authorId, authorName, body) {
+  const commentId = randomUUID();
+  
+  // Insert comment
+  const result = await client.query(
+    `INSERT INTO grievance_schema.complaint_comments (id, complaint_id, author_id, author_name, body, created_at)
+     VALUES ($1, $2, $3, $4, $5, NOW())
+     RETURNING *`,
+    [commentId, complaintId, authorId, authorName, body]
+  );
+  
+  const comment = result.rows[0];
+  
+  // Find original poster to notify
+  const posterResult = await client.query(
+    `SELECT poster_id, title FROM grievance_schema.complaints WHERE id = $1`,
+    [complaintId]
+  );
+  
+  if (posterResult.rows.length > 0 && posterResult.rows[0].poster_id && posterResult.rows[0].poster_id !== authorId) {
+    const { poster_id, title } = posterResult.rows[0];
+    await createNotification(
+      client,
+      poster_id,
+      'comment',
+      authorName,
+      `${authorName} commented on your report: "${title}"`,
+      `/app/worker/community?complaint=${complaintId}`
+    );
+  }
+  
+  return comment;
+}
+
+/**
+ * Get comments for a complaint
+ */
+export async function getComments(client, complaintId) {
+  const result = await client.query(
+    `SELECT * FROM grievance_schema.complaint_comments 
+     WHERE complaint_id = $1 
+     ORDER BY created_at ASC`,
+    [complaintId]
+  );
+  return result.rows;
+}
+
+/**
+ * Create a notification
+ */
+export async function createNotification(client, userId, type, senderName, message, link) {
+  const id = randomUUID();
+  const now = new Date();
+  await client.query(
+    `INSERT INTO grievance_schema.notifications (id, user_id, type, sender_name, message, link, is_read, created_at)
+     VALUES ($1, $2, $3, $4, $5, $6, FALSE, $7)`,
+    [id, userId, type, senderName, message, link, now]
+  );
+
+  notificationEmitter.emit('notification', {
+    id,
+    user_id: userId,
+    type,
+    sender_name: senderName,
+    message,
+    link,
+    is_read: false,
+    created_at: now.toISOString()
+  });
+}
+
+/**
+ * Get user notifications
+ */
+export async function getNotifications(client, userId) {
+  const result = await client.query(
+    `SELECT * FROM grievance_schema.notifications 
+     WHERE user_id = $1 
+     ORDER BY created_at DESC LIMIT 50`,
+    [userId]
+  );
+  return result.rows;
+}
+
+/**
+ * Mark notification as read
+ */
+export async function markNotificationRead(client, notificationId, userId) {
+  await client.query(
+    `UPDATE grievance_schema.notifications SET is_read = TRUE 
+     WHERE id = $1 AND user_id = $2`,
+    [notificationId, userId]
+  );
 }

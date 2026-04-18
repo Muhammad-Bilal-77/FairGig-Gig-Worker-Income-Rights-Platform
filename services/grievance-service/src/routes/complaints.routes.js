@@ -11,18 +11,31 @@ import {
   addTag,
   updateStatus,
   getStats,
+  addComment,
+  getComments,
+  getNotifications,
+  markNotificationRead,
 } from '../services/grievance.service.js';
 
 async function complaintsRoutes(fastify) {
   // GET /api/grievance/complaints — List all complaints (public, no auth)
   fastify.get('/complaints', async (request, reply) => {
-    const { platform, category, status, city_zone, page = 1, limit = 20 } = request.query;
+    const { platform, category, status, city_zone, poster_id, page = 1, limit = 20 } = request.query;
     
-    const filters = { platform, category, status, city_zone };
+    const filters = { platform, category, status, city_zone, poster_id };
     const pagination = { page: parseInt(page, 10), limit: parseInt(limit, 10) };
     
+    // Try to get user ID if logged in (optional auth)
+    let requestingUserId = null;
     try {
-      const result = await listComplaints(pool, filters, pagination);
+      const decoded = await request.accessVerify();
+      requestingUserId = decoded.sub;
+    } catch (e) {
+      // Not logged in, that's fine
+    }
+    
+    try {
+      const result = await listComplaints(pool, filters, pagination, requestingUserId);
       return reply.code(200).send(result);
     } catch (err) {
       fastify.log.error(err);
@@ -32,7 +45,7 @@ async function complaintsRoutes(fastify) {
   
   // POST /api/grievance/complaints — Create a new complaint (auth required)
   fastify.post('/complaints', { preHandler: [authenticate] }, async (request, reply) => {
-    const { platform, category, title, description, city_zone, anonymous } = request.body;
+    const { platform, category, title, description, city_zone, anonymous, images } = request.body;
     
     // Validate required fields
     if (!platform || !category || !title || !description) {
@@ -47,7 +60,8 @@ async function complaintsRoutes(fastify) {
         return createComplaint(
           client,
           request.user.sub,
-          { platform, category, title, description, city_zone },
+          request.user.name,
+          { platform, category, title, description, city_zone, images },
           anonymous === true
         );
       });
@@ -108,7 +122,7 @@ async function complaintsRoutes(fastify) {
     
     try {
       const result = await withTransaction(async (client) => {
-        return toggleUpvote(client, id, request.user.sub, true);
+        return toggleUpvote(client, id, request.user.sub, request.user.name);
       });
       
       return reply.code(200).send(result);
@@ -194,6 +208,63 @@ async function complaintsRoutes(fastify) {
     }
   );
   
+  // POST /api/grievance/complaints/:id/comments — Add a comment (auth required)
+  fastify.post('/complaints/:id/comments', { preHandler: [authenticate] }, async (request, reply) => {
+    const { id } = request.params;
+    const { body } = request.body;
+    
+    if (!body) {
+      return reply.code(400).send({ error: 'Missing comment body' });
+    }
+    
+    try {
+      const comment = await withTransaction(async (client) => {
+        return addComment(client, id, request.user.sub, request.user.name, body);
+      });
+      return reply.code(201).send(comment);
+    } catch (err) {
+      fastify.log.error(err);
+      return reply.code(500).send({ error: 'Internal server error' });
+    }
+  });
+
+  // GET /api/grievance/complaints/:id/comments — List comments
+  fastify.get('/complaints/:id/comments', async (request, reply) => {
+    const { id } = request.params;
+    try {
+      const comments = await getComments(pool, id);
+      return reply.code(200).send(comments);
+    } catch (err) {
+      fastify.log.error(err);
+      return reply.code(500).send({ error: 'Internal server error' });
+    }
+  });
+
+  // GET /api/grievance/notifications — List notifications (auth required)
+  fastify.get('/notifications', { preHandler: [authenticate] }, async (request, reply) => {
+    try {
+      const notifications = await getNotifications(pool, request.user.sub);
+      return reply.code(200).send(notifications);
+    } catch (err) {
+      fastify.log.error(err);
+      return reply.code(500).send({ error: 'Internal server error' });
+    }
+  });
+
+  // PATCH /api/grievance/notifications/:id/read — Mark as read (auth required)
+  fastify.patch('/notifications/:id/read', { preHandler: [authenticate] }, async (request, reply) => {
+    const { id } = request.params;
+    try {
+      await withTransaction(async (client) => {
+        await markNotificationRead(client, id, request.user.sub);
+      });
+      return reply.code(204).send();
+    } catch (err) {
+      fastify.log.error(err);
+      return reply.code(500).send({ error: 'Internal server error' });
+    }
+  });
+
   // GET /api/grievance/stats — Get statistics (public)
   fastify.get('/stats', async (request, reply) => {
     try {

@@ -6,6 +6,8 @@ import { config } from './config.js';
 import { connectDB } from './db.js';
 import jwtPlugin from './plugins/jwt.plugin.js';
 import corsPlugin from './plugins/cors.plugin.js';
+import fastifyWebsocket from '@fastify/websocket';
+import { notificationEmitter } from './services/grievance.service.js';
 import complaintsRoutes from './routes/complaints.routes.js';
 import internalRoutes from './routes/internal.routes.js';
 import { httpDurationHistogram } from './metrics.js';
@@ -51,6 +53,39 @@ async function buildApp() {
   // Register plugins
   await fastify.register(jwtPlugin);
   await fastify.register(corsPlugin);
+  await fastify.register(fastifyWebsocket);
+
+  fastify.get('/api/grievance/ws/notifications', { websocket: true }, (connection, req) => {
+    // We expect the user token in query param for simplest WS auth, or just rely on cookie
+    // Let's do simple query token auth
+    const token = req.query.token;
+    if (!token) {
+      connection.socket.close(1008, 'Token required');
+      return;
+    }
+
+    try {
+      const decoded = fastify.jwt.verify(token);
+      const userId = decoded.sub;
+
+      const listener = (notification) => {
+        if (notification.user_id === userId) {
+          connection.socket.send(JSON.stringify(notification));
+        }
+      };
+
+      notificationEmitter.on('notification', listener);
+
+      connection.socket.on('close', () => {
+        notificationEmitter.off('notification', listener);
+      });
+      connection.socket.on('error', () => {
+        notificationEmitter.off('notification', listener);
+      });
+    } catch (err) {
+      connection.socket.close(1008, 'Invalid token');
+    }
+  });
 
   // Register routes
   await fastify.register(internalRoutes);
