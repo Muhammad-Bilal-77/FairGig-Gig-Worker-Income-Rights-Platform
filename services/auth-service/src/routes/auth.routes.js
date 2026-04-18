@@ -28,6 +28,7 @@ import {
   refreshActiveSessionsGauge,
 } from '../metrics.js';
 import { query } from '../db.js';
+import { sendWorkerStatusUpdateEmail } from '../utils/mailer.js';
 
 export default async function authRoutes(fastify) {
 
@@ -457,6 +458,14 @@ export default async function authRoutes(fastify) {
     const updatedWorker = await setWorkerActiveStatus(
       request.params.id,
       request.body.is_active
+    );
+
+    const actorName = request.user?.name || 'FairGig verifier team';
+    sendWorkerStatusUpdateEmail(
+      updatedWorker.email,
+      updatedWorker.full_name,
+      updatedWorker.is_active,
+      actorName,
     );
 
     return reply.send({
