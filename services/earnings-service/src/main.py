@@ -2,6 +2,7 @@ from contextlib import asynccontextmanager
 
 import asyncpg
 from fastapi import FastAPI, Request
+from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -51,7 +52,10 @@ async def request_validation_error_handler(_request: Request, exc: RequestValida
             ctx['error'] = str(ctx['error'])
         sanitized_errors.append(normalized)
 
-    return JSONResponse(status_code=400, content={'success': False, 'error': sanitized_errors})
+    return JSONResponse(
+        status_code=400,
+        content=jsonable_encoder({'success': False, 'error': sanitized_errors}),
+    )
 
 
 @app.exception_handler(asyncpg.PostgresError)

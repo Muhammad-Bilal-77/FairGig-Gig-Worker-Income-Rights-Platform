@@ -4,7 +4,7 @@ import asyncpg
 from fastapi import APIRouter, Depends, HTTPException
 
 from src.auth import require_role
-from src.database import get_earnings_conn
+from src.database import get_earnings_conn, get_readonly_conn
 from src.metrics import verifications_total
 from src.models import VerificationUpdate
 
@@ -53,16 +53,39 @@ async def verify_shift(
 @router.get('/shifts/pending-verification')
 async def list_pending_verification(
     user: dict = Depends(require_role('verifier', 'advocate')),
-    conn: asyncpg.Connection = Depends(get_earnings_conn),
+    conn: asyncpg.Connection = Depends(get_readonly_conn),
 ):
     _ = user
     rows = await conn.fetch(
         """
-        SELECT *
-        FROM earnings_schema.shifts
-        WHERE verify_status = 'PENDING'
-          AND screenshot_url IS NOT NULL
-        ORDER BY created_at ASC
+        SELECT
+          s.id,
+          s.worker_id,
+          s.platform,
+          s.city_zone,
+          s.worker_category,
+          s.shift_date,
+          s.hours_worked,
+          s.gross_earned,
+          s.platform_deduction,
+          s.net_received,
+          s.effective_hourly_rate,
+          s.deduction_rate,
+          s.screenshot_url,
+          s.screenshot_public_id,
+          s.verify_status,
+          s.import_source,
+          s.created_at,
+          s.updated_at,
+          u.full_name AS worker_full_name,
+          u.email AS worker_email,
+          u.city AS worker_city,
+          u.city_zone AS worker_profile_city_zone
+        FROM earnings_schema.shifts s
+        LEFT JOIN auth_schema.users u ON u.id = s.worker_id
+        WHERE s.verify_status = 'PENDING'
+          AND s.screenshot_url IS NOT NULL
+        ORDER BY s.created_at ASC
         LIMIT 50
         """
     )

@@ -302,5 +302,24 @@ export const api = {
         requiresAuth: true,
       });
     },
+
+    listPendingVerification: () =>
+      earningsRequest('/api/earnings/shifts/pending-verification', {
+        method: 'GET',
+        requiresAuth: true,
+      }),
+
+    verifyShift: (
+      shiftId: string,
+      data: {
+        status: 'CONFIRMED' | 'FLAGGED' | 'UNVERIFIABLE';
+        note?: string;
+      }
+    ) =>
+      earningsRequest(`/api/earnings/shifts/${shiftId}/verify`, {
+        method: 'PATCH',
+        body: JSON.stringify(data),
+        requiresAuth: true,
+      }),
   },
 };
