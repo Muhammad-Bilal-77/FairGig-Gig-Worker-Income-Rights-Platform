@@ -7,6 +7,7 @@ const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:4001';
 const EARNINGS_API_BASE = import.meta.env.VITE_EARNINGS_API_URL || 'http://localhost:4002';
 const ANOMALY_API_BASE = import.meta.env.VITE_ANOMALY_API_URL || 'http://localhost:4003';
 const CERTIFICATE_API_BASE = import.meta.env.VITE_CERTIFICATE_API_URL || 'http://localhost:4006';
+export const GRIEVANCE_API_BASE = import.meta.env.VITE_GRIEVANCE_API_URL || 'http://localhost:4004';
 
 export interface ApiError {
   error: string;
@@ -386,6 +387,64 @@ async function anomalyRequest(
   return response.json();
 }
 
+async function grievanceRequest(
+  endpoint: string,
+  options: RequestInit & { requiresAuth?: boolean } = {}
+): Promise<any> {
+  const { requiresAuth = false, ...fetchOptions } = options;
+
+  let url = `${GRIEVANCE_API_BASE}${endpoint}`;
+  const headers: HeadersInit = {
+    ...fetchOptions.headers,
+  };
+
+  if (!(fetchOptions.body instanceof FormData)) {
+    headers['Content-Type'] = 'application/json';
+  }
+
+  if (requiresAuth) {
+    let token = getAccessToken();
+    if (!token) {
+      token = await refreshAccessToken();
+    }
+    if (!token) {
+      throw new Error('Authentication required');
+    }
+    headers['Authorization'] = `Bearer ${token}`;
+  } else {
+    // Optional auth: attach token if it exists but don't fail if it doesn't
+    const token = getAccessToken();
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+  }
+
+  let response = await fetch(url, {
+    ...fetchOptions,
+    headers,
+  });
+
+  if (response.status === 401 && requiresAuth && getTokens()?.refresh_token) {
+    const newToken = await refreshAccessToken();
+    if (newToken) {
+      headers['Authorization'] = `Bearer ${newToken}`;
+      response = await fetch(url, {
+        ...fetchOptions,
+        headers,
+      });
+    }
+  }
+
+  if (!response.ok) {
+    const error: ApiError = await response.json().catch(() => ({
+      error: `HTTP ${response.status}: ${response.statusText}`,
+    }));
+    throw { status: response.status, ...error };
+  }
+
+  return response.json();
+}
+
 export const api = {
   // Auth endpoints
   signup: (data: {
@@ -657,5 +716,63 @@ export const api = {
         method: 'GET',
         requiresAuth: true,
       }),
+  },
+
+  grievance: {
+    listComplaints: (params: { platform?: string; city_zone?: string; poster_id?: string; page?: number } = {}) => {
+      const qs = new URLSearchParams();
+      if (params.platform) qs.append('platform', params.platform);
+      if (params.city_zone) qs.append('city_zone', params.city_zone);
+      if (params.poster_id) qs.append('poster_id', params.poster_id);
+      if (params.page) qs.append('page', params.page.toString());
+      return grievanceRequest(`/api/grievance/complaints?${qs.toString()}`);
+    },
+
+    getComplaint: (id: string) =>
+      grievanceRequest(`/api/grievance/complaints/${id}`),
+
+    createComplaint: (data: {
+      platform: string;
+      category: string;
+      title: string;
+      description: string;
+      city_zone?: string;
+      anonymous?: boolean;
+      images?: string[];
+    }) =>
+      grievanceRequest('/api/grievance/complaints', {
+        method: 'POST',
+        body: JSON.stringify(data),
+        requiresAuth: true,
+      }),
+
+    upvote: (id: string) =>
+      grievanceRequest(`/api/grievance/complaints/${id}/upvote`, {
+        method: 'POST',
+        requiresAuth: true,
+      }),
+
+    getComments: (id: string) =>
+      grievanceRequest(`/api/grievance/complaints/${id}/comments`),
+
+    addComment: (id: string, body: string) =>
+      grievanceRequest(`/api/grievance/complaints/${id}/comments`, {
+        method: 'POST',
+        body: JSON.stringify({ body }),
+        requiresAuth: true,
+      }),
+
+    getNotifications: () =>
+      grievanceRequest('/api/grievance/notifications', {
+        requiresAuth: true,
+      }),
+
+    markNotificationRead: (id: string) =>
+      grievanceRequest(`/api/grievance/notifications/${id}/read`, {
+        method: 'PATCH',
+        requiresAuth: true,
+      }),
+
+    getStats: () => grievanceRequest('/api/grievance/stats'),
   },
 };

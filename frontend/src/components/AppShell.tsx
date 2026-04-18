@@ -22,6 +22,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { NotificationBell } from "@/components/NotificationBell";
 
 type NavItem = { to: string; label: string; icon: React.ComponentType<{ className?: string }> };
 
@@ -163,9 +164,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </div>
           <span className="text-sm font-semibold">FairGig</span>
         </div>
-        <Button variant="ghost" size="icon" onClick={() => setOpen((v) => !v)}>
-          {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-        </Button>
+        <div className="flex items-center gap-1">
+          <NotificationBell />
+          <Button variant="ghost" size="icon" onClick={() => setOpen((v) => !v)}>
+            {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+          </Button>
+        </div>
       </header>
 
       <div className="lg:flex">
@@ -190,6 +194,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         )}
 
         <main className="flex-1 min-w-0">
+          {/* Desktop Top Header */}
+          <header className="hidden lg:flex items-center justify-end px-8 h-14 border-b bg-background/50 backdrop-blur sticky top-0 z-20">
+            <div className="flex items-center gap-2">
+              <NotificationBell />
+            </div>
+          </header>
+
           {user.verification_status === "PENDING_APPROVAL" && (
             <div className="border-b bg-amber-50/50">
               <div className="max-w-7xl mx-auto px-5 sm:px-8 py-3">
