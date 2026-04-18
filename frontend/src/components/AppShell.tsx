@@ -98,7 +98,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </div>
       </div>
 
-      <nav className="flex-1 px-3 space-y-0.5">
+      <nav className="flex-1 px-3 space-y-0.5 overflow-y-auto overflow-x-hidden custom-scrollbar">
         {items.map((item) => {
           const active =
             location.pathname === item.to ||
@@ -109,7 +109,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               key={item.to}
               to={item.to}
               className={cn(
-                "flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors",
+                "flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors",
                 active
                   ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium"
                   : "text-sidebar-foreground/80 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground",
@@ -155,7 +155,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   );
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background lg:h-screen lg:overflow-hidden">
       {/* Mobile top bar */}
       <header className="lg:hidden sticky top-0 z-30 flex items-center justify-between border-b bg-background/80 backdrop-blur px-4 h-14">
         <div className="flex items-center gap-2">
@@ -172,9 +172,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </div>
       </header>
 
-      <div className="lg:flex">
+      <div className="lg:grid lg:grid-cols-[16rem_minmax(0,1fr)] lg:h-screen">
         {/* Desktop sidebar */}
-        <aside className="hidden lg:flex w-64 shrink-0 border-r border-sidebar-border bg-sidebar min-h-screen sticky top-0">
+        <aside className="hidden lg:flex border-r border-sidebar-border bg-sidebar sticky top-0 h-screen overflow-hidden">
           {SidebarContent}
         </aside>
 
@@ -185,7 +185,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             onClick={() => setOpen(false)}
           >
             <aside
-              className="absolute left-0 top-0 h-full w-72 bg-sidebar border-r border-sidebar-border"
+              className="absolute left-0 top-0 h-full w-[84vw] max-w-72 bg-sidebar border-r border-sidebar-border"
               onClick={(e) => e.stopPropagation()}
             >
               {SidebarContent}
@@ -193,7 +193,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </div>
         )}
 
-        <main className="flex-1 min-w-0">
+        <main className="min-w-0 overflow-x-hidden lg:h-screen lg:overflow-y-auto">
           {/* Desktop Top Header */}
           <header className="hidden lg:flex items-center justify-end px-8 h-14 border-b bg-background/50 backdrop-blur sticky top-0 z-20">
             <div className="flex items-center gap-2">
