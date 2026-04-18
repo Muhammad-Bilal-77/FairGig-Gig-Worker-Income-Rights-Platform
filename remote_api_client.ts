@@ -1,4 +1,4 @@
-/**
+﻿/**
  * API Client for FairGig Backend
  * Handles JWT tokens, refresh, and request/response intercepting
  */
@@ -404,87 +404,5 @@ export const api = {
         requiresAuth: true,
       });
     },
-
-    // Analytics endpoints
-    getSummary: (params?: {
-      from_date?: string;
-      to_date?: string;
-    }) => {
-      const query = new URLSearchParams();
-      if (params?.from_date) query.append('from_date', params.from_date);
-      if (params?.to_date) query.append('to_date', params.to_date);
-      
-      return earningsRequest(`/api/earnings/summary${query.toString() ? '?' + query.toString() : ''}`, {
-        method: 'GET',
-        requiresAuth: true,
-      });
-    },
-
-    getMedian: (params?: {
-      city_zone?: string;
-      platform?: string;
-      worker_category?: string;
-    }) => {
-      const query = new URLSearchParams();
-      if (params?.city_zone) query.append('city_zone', params.city_zone);
-      if (params?.platform) query.append('platform', params.platform);
-      if (params?.worker_category) query.append('worker_category', params.worker_category);
-      
-      return earningsRequest(`/api/earnings/median${query.toString() ? '?' + query.toString() : ''}`, {
-        method: 'GET',
-        requiresAuth: true,
-      });
-    },
-
-    listPendingVerification: () =>
-      earningsRequest('/api/earnings/shifts/pending-verification', {
-        method: 'GET',
-        requiresAuth: true,
-      }),
-
-    verifyShift: (
-      shiftId: string,
-      data: {
-        status: 'CONFIRMED' | 'FLAGGED' | 'UNVERIFIABLE';
-        note?: string;
-      }
-    ) =>
-      earningsRequest(`/api/earnings/shifts/${shiftId}/verify`, {
-        method: 'PATCH',
-        body: JSON.stringify(data),
-        requiresAuth: true,
-      }),
-  },
-
-  certificate: {
-    generate: (data: { from_date: string; to_date: string }) =>
-      certificateRequest('/api/certificates/generate', {
-        method: 'POST',
-        body: JSON.stringify(data),
-        requiresAuth: true,
-      }),
-
-    list: () =>
-      certificateRequest('/api/certificates', {
-        method: 'GET',
-        requiresAuth: true,
-      }),
-
-    getSummary: (certRef: string) =>
-      certificateRequest(`/api/certificates/${encodeURIComponent(certRef)}/json`, {
-        method: 'GET',
-        requiresAuth: true,
-      }),
-
-    getViewUrl: (certRef: string, download = false, type?: string) => {
-      const token = getAccessToken();
-      const baseUrl = `${CERTIFICATE_API_BASE}/api/certificates/${encodeURIComponent(certRef)}`;
-      const queryParams = new URLSearchParams();
-      if (token) queryParams.append('token', token);
-      if (download) queryParams.append('download', '1');
-      if (type) queryParams.append('type', type);
-      const qs = queryParams.toString();
-      return qs ? `${baseUrl}?${qs}` : baseUrl;
-    }
   },
 };
