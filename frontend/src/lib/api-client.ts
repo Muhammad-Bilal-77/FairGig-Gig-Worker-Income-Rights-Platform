@@ -119,6 +119,21 @@ export interface VerificationSubmission {
   verifier_email?: string | null;
 }
 
+export interface VerifierStatsResponse {
+  total_reviewed_by_you: number;
+  approved_by_you: number;
+  flagged_by_you: number;
+  rejected_by_you: number;
+  approval_rate: number;
+  avg_review_seconds: number;
+  pending_queue_count: number;
+  total_reviewed_global: number;
+  days: number;
+  timezone?: string;
+  weekly_activity: Array<{ date: string; reviewed: number }>;
+  top_platforms: Array<{ platform: string; reviews: number }>;
+}
+
 interface Tokens {
   access_token: string;
   refresh_token: string;
@@ -663,6 +678,12 @@ export const api = {
         requiresAuth: true,
       });
     },
+
+    getVerifierStats: (days = 7): Promise<{ success: boolean; data: VerifierStatsResponse }> =>
+      earningsRequest(`/api/earnings/verifier/stats?days=${encodeURIComponent(String(days))}`, {
+        method: 'GET',
+        requiresAuth: true,
+      }),
 
     verifyShift: (
       shiftId: string,

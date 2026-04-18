@@ -9,6 +9,7 @@ from src.metrics import verifications_total
 from src.models import VerificationUpdate
 
 router = APIRouter(tags=['verification'])
+REPORTING_TIMEZONE = 'Asia/Karachi'
 
 
 def _normalize_status_list(raw_statuses: str | None) -> list[str] | None:
@@ -256,3 +257,122 @@ async def list_submissions(
             'offset': offset,
         },
     }
+
+
+@router.get('/verifier/stats')
+async def verifier_stats(
+        days: int = Query(default=7, ge=7, le=90),
+        user: dict = Depends(require_role('verifier', 'advocate')),
+        conn: asyncpg.Connection = Depends(get_readonly_conn),
+):
+        verifier_id = UUID(user['user_id'])
+
+        personal = await conn.fetchrow(
+                """
+                SELECT
+                    COUNT(*) FILTER (WHERE verify_status IN ('CONFIRMED', 'FLAGGED', 'UNVERIFIABLE')) AS total_reviewed,
+                    COUNT(*) FILTER (WHERE verify_status = 'CONFIRMED') AS approved_count,
+                    COUNT(*) FILTER (WHERE verify_status = 'FLAGGED') AS flagged_count,
+                    COUNT(*) FILTER (WHERE verify_status = 'UNVERIFIABLE') AS rejected_count,
+                    AVG(EXTRACT(EPOCH FROM (verified_at - created_at)))
+                        FILTER (
+                            WHERE verify_status IN ('CONFIRMED', 'FLAGGED', 'UNVERIFIABLE')
+                                AND verified_at IS NOT NULL
+                        ) AS avg_review_seconds
+                FROM earnings_schema.shifts
+                WHERE verified_by = $1
+                """,
+                verifier_id,
+        )
+
+        global_counts = await conn.fetchrow(
+                """
+                SELECT
+                    COUNT(*) FILTER (WHERE verify_status = 'PENDING' AND screenshot_url IS NOT NULL) AS pending_queue_count,
+                    COUNT(*) FILTER (WHERE verify_status IN ('CONFIRMED', 'FLAGGED', 'UNVERIFIABLE')) AS total_reviewed_global
+                FROM earnings_schema.shifts
+                """
+        )
+
+        activity_rows = await conn.fetch(
+                """
+                WITH days AS (
+                    SELECT generate_series(
+                        (NOW() AT TIME ZONE $3)::date - ($2::int - 1),
+                        (NOW() AT TIME ZONE $3)::date,
+                        INTERVAL '1 day'
+                    )::date AS day
+                )
+                SELECT
+                    d.day,
+                    COALESCE(COUNT(s.id), 0) AS reviewed
+                FROM days d
+                LEFT JOIN earnings_schema.shifts s
+                    ON s.verified_by = $1
+                 AND s.verify_status IN ('CONFIRMED', 'FLAGGED', 'UNVERIFIABLE')
+                 AND s.verified_at IS NOT NULL
+                     AND (s.verified_at AT TIME ZONE $3)::date = d.day
+                GROUP BY d.day
+                ORDER BY d.day ASC
+                """,
+                verifier_id,
+                days,
+                    REPORTING_TIMEZONE,
+        )
+
+        platform_rows = await conn.fetch(
+                """
+                SELECT
+                    platform,
+                    COUNT(*) AS reviews
+                FROM earnings_schema.shifts
+                WHERE verified_by = $1
+                    AND verify_status IN ('CONFIRMED', 'FLAGGED', 'UNVERIFIABLE')
+                GROUP BY platform
+                ORDER BY reviews DESC, platform ASC
+                LIMIT 5
+                """,
+                verifier_id,
+        )
+
+        total_reviewed = int((personal or {}).get('total_reviewed') or 0)
+        approved_count = int((personal or {}).get('approved_count') or 0)
+        flagged_count = int((personal or {}).get('flagged_count') or 0)
+        rejected_count = int((personal or {}).get('rejected_count') or 0)
+
+        approval_rate = (approved_count / total_reviewed * 100.0) if total_reviewed > 0 else 0.0
+        avg_review_seconds_raw = (personal or {}).get('avg_review_seconds')
+        avg_review_seconds = float(avg_review_seconds_raw) if avg_review_seconds_raw is not None else 0.0
+
+        pending_queue_count = int((global_counts or {}).get('pending_queue_count') or 0)
+        total_reviewed_global = int((global_counts or {}).get('total_reviewed_global') or 0)
+
+        return {
+                'success': True,
+                'data': {
+                        'total_reviewed_by_you': total_reviewed,
+                        'approved_by_you': approved_count,
+                        'flagged_by_you': flagged_count,
+                        'rejected_by_you': rejected_count,
+                        'approval_rate': round(approval_rate, 2),
+                        'avg_review_seconds': round(avg_review_seconds, 2),
+                        'pending_queue_count': pending_queue_count,
+                        'total_reviewed_global': total_reviewed_global,
+                        'days': days,
+                        'timezone': REPORTING_TIMEZONE,
+                        'weekly_activity': [
+                                {
+                                        'date': row['day'].isoformat(),
+                                        'reviewed': int(row['reviewed']),
+                                }
+                                for row in activity_rows
+                        ],
+                        'top_platforms': [
+                                {
+                                        'platform': row['platform'],
+                                        'reviews': int(row['reviews']),
+                                }
+                                for row in platform_rows
+                        ],
+                },
+        }
