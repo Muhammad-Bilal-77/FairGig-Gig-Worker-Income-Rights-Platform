@@ -12,6 +12,7 @@ import {
   BarChart3,
   AlertTriangle,
   Inbox,
+  Users,
   LogOut,
   Menu,
   X,
@@ -34,6 +35,7 @@ const NAV: Record<Role, NavItem[]> = {
   ],
   verifier: [
     { to: "/app/verifier", label: "Verification Queue", icon: Inbox },
+    { to: "/app/verifier/workers", label: "Workers", icon: Users },
     { to: "/app/verifier/stats", label: "My Stats", icon: ShieldCheck },
   ],
   advocate: [

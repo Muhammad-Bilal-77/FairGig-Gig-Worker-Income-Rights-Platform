@@ -12,6 +12,23 @@ export interface ApiError {
   details?: Array<{ field: string; message: string }>;
 }
 
+export interface WorkerAccount {
+  id: string;
+  email: string;
+  full_name: string;
+  phone?: string | null;
+  role: 'worker';
+  city?: string | null;
+  city_zone?: string | null;
+  worker_category?: string | null;
+  is_active: boolean;
+  is_verified: boolean;
+  email_verified: boolean;
+  verification_status: string;
+  last_login_at?: string | null;
+  created_at: string;
+}
+
 interface Tokens {
   access_token: string;
   refresh_token: string;
@@ -77,9 +94,9 @@ async function apiRequest(
   const { requiresAuth = false, ...fetchOptions } = options;
 
   let url = `${API_BASE}${endpoint}`;
-  const headers: HeadersInit = {
+  const headers: Record<string, string> = {
     'Content-Type': 'application/json',
-    ...fetchOptions.headers,
+    ...(fetchOptions.headers as Record<string, string>),
   };
 
   // Add auth token if required
@@ -131,8 +148,8 @@ async function earningsRequest(
   const { requiresAuth = true, ...fetchOptions } = options;
 
   let url = `${EARNINGS_API_BASE}${endpoint}`;
-  const headers: HeadersInit = {
-    ...fetchOptions.headers,
+  const headers: Record<string, string> = {
+    ...(fetchOptions.headers as Record<string, string>),
   };
 
   // Don't set Content-Type for FormData
@@ -228,6 +245,35 @@ export const api = {
     apiRequest('/api/auth/me', {
       method: 'PUT',
       body: JSON.stringify(data),
+      requiresAuth: true,
+    }),
+
+  listWorkers: (params?: {
+    include_inactive?: boolean;
+    search?: string;
+    limit?: number;
+    offset?: number;
+  }): Promise<{ success: boolean; data: WorkerAccount[]; count: number }> => {
+    const query = new URLSearchParams();
+    if (params?.include_inactive) query.append('include_inactive', 'true');
+    if (params?.search) query.append('search', params.search);
+    if (params?.limit) query.append('limit', params.limit.toString());
+    if (params?.offset) query.append('offset', params.offset.toString());
+
+    const queryString = query.toString();
+    return apiRequest(`/api/auth/workers${queryString ? '?' + queryString : ''}`, {
+      method: 'GET',
+      requiresAuth: true,
+    });
+  },
+
+  setWorkerActiveStatus: (
+    workerId: string,
+    isActive: boolean,
+  ): Promise<{ success: boolean; data: WorkerAccount }> =>
+    apiRequest(`/api/auth/workers/${workerId}/status`, {
+      method: 'PATCH',
+      body: JSON.stringify({ is_active: isActive }),
       requiresAuth: true,
     }),
 

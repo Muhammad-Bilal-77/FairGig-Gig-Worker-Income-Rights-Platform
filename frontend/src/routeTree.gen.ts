@@ -21,6 +21,7 @@ import { Route as AppWorkerEarningsRouteImport } from './routes/app.worker.earni
 import { Route as AppWorkerCommunityRouteImport } from './routes/app.worker.community'
 import { Route as AppWorkerCertificateRouteImport } from './routes/app.worker.certificate'
 import { Route as AppWorkerAnalyticsRouteImport } from './routes/app.worker.analytics'
+import { Route as AppVerifierWorkersRouteImport } from './routes/app.verifier.workers'
 import { Route as AppVerifierStatsRouteImport } from './routes/app.verifier.stats'
 import { Route as AppAdvocateVulnerabilityRouteImport } from './routes/app.advocate.vulnerability'
 import { Route as AppAdvocateComplaintsRouteImport } from './routes/app.advocate.complaints'
@@ -85,6 +86,11 @@ const AppWorkerAnalyticsRoute = AppWorkerAnalyticsRouteImport.update({
   path: '/worker/analytics',
   getParentRoute: () => AppRoute,
 } as any)
+const AppVerifierWorkersRoute = AppVerifierWorkersRouteImport.update({
+  id: '/verifier/workers',
+  path: '/verifier/workers',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppVerifierStatsRoute = AppVerifierStatsRouteImport.update({
   id: '/verifier/stats',
   path: '/verifier/stats',
@@ -111,6 +117,7 @@ export interface FileRoutesByFullPath {
   '/app/advocate/complaints': typeof AppAdvocateComplaintsRoute
   '/app/advocate/vulnerability': typeof AppAdvocateVulnerabilityRoute
   '/app/verifier/stats': typeof AppVerifierStatsRoute
+  '/app/verifier/workers': typeof AppVerifierWorkersRoute
   '/app/worker/analytics': typeof AppWorkerAnalyticsRoute
   '/app/worker/certificate': typeof AppWorkerCertificateRoute
   '/app/worker/community': typeof AppWorkerCommunityRoute
@@ -128,6 +135,7 @@ export interface FileRoutesByTo {
   '/app/advocate/complaints': typeof AppAdvocateComplaintsRoute
   '/app/advocate/vulnerability': typeof AppAdvocateVulnerabilityRoute
   '/app/verifier/stats': typeof AppVerifierStatsRoute
+  '/app/verifier/workers': typeof AppVerifierWorkersRoute
   '/app/worker/analytics': typeof AppWorkerAnalyticsRoute
   '/app/worker/certificate': typeof AppWorkerCertificateRoute
   '/app/worker/community': typeof AppWorkerCommunityRoute
@@ -146,6 +154,7 @@ export interface FileRoutesById {
   '/app/advocate/complaints': typeof AppAdvocateComplaintsRoute
   '/app/advocate/vulnerability': typeof AppAdvocateVulnerabilityRoute
   '/app/verifier/stats': typeof AppVerifierStatsRoute
+  '/app/verifier/workers': typeof AppVerifierWorkersRoute
   '/app/worker/analytics': typeof AppWorkerAnalyticsRoute
   '/app/worker/certificate': typeof AppWorkerCertificateRoute
   '/app/worker/community': typeof AppWorkerCommunityRoute
@@ -165,6 +174,7 @@ export interface FileRouteTypes {
     | '/app/advocate/complaints'
     | '/app/advocate/vulnerability'
     | '/app/verifier/stats'
+    | '/app/verifier/workers'
     | '/app/worker/analytics'
     | '/app/worker/certificate'
     | '/app/worker/community'
@@ -182,6 +192,7 @@ export interface FileRouteTypes {
     | '/app/advocate/complaints'
     | '/app/advocate/vulnerability'
     | '/app/verifier/stats'
+    | '/app/verifier/workers'
     | '/app/worker/analytics'
     | '/app/worker/certificate'
     | '/app/worker/community'
@@ -199,6 +210,7 @@ export interface FileRouteTypes {
     | '/app/advocate/complaints'
     | '/app/advocate/vulnerability'
     | '/app/verifier/stats'
+    | '/app/verifier/workers'
     | '/app/worker/analytics'
     | '/app/worker/certificate'
     | '/app/worker/community'
@@ -302,6 +314,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppWorkerAnalyticsRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/verifier/workers': {
+      id: '/app/verifier/workers'
+      path: '/verifier/workers'
+      fullPath: '/app/verifier/workers'
+      preLoaderRoute: typeof AppVerifierWorkersRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/app/verifier/stats': {
       id: '/app/verifier/stats'
       path: '/verifier/stats'
@@ -330,6 +349,7 @@ interface AppRouteChildren {
   AppAdvocateComplaintsRoute: typeof AppAdvocateComplaintsRoute
   AppAdvocateVulnerabilityRoute: typeof AppAdvocateVulnerabilityRoute
   AppVerifierStatsRoute: typeof AppVerifierStatsRoute
+  AppVerifierWorkersRoute: typeof AppVerifierWorkersRoute
   AppWorkerAnalyticsRoute: typeof AppWorkerAnalyticsRoute
   AppWorkerCertificateRoute: typeof AppWorkerCertificateRoute
   AppWorkerCommunityRoute: typeof AppWorkerCommunityRoute
@@ -343,6 +363,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppAdvocateComplaintsRoute: AppAdvocateComplaintsRoute,
   AppAdvocateVulnerabilityRoute: AppAdvocateVulnerabilityRoute,
   AppVerifierStatsRoute: AppVerifierStatsRoute,
+  AppVerifierWorkersRoute: AppVerifierWorkersRoute,
   AppWorkerAnalyticsRoute: AppWorkerAnalyticsRoute,
   AppWorkerCertificateRoute: AppWorkerCertificateRoute,
   AppWorkerCommunityRoute: AppWorkerCommunityRoute,
