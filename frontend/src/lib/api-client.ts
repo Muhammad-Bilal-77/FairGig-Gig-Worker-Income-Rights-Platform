@@ -14,6 +14,56 @@ export interface ApiError {
   details?: Array<{ field: string; message: string }>;
 }
 
+function formatUnknownError(input: unknown): string {
+  if (typeof input === 'string') {
+    return input;
+  }
+
+  if (Array.isArray(input)) {
+    const messages = input
+      .map((item) => {
+        if (typeof item === 'string') return item;
+        if (item && typeof item === 'object' && 'msg' in item) {
+          return String((item as { msg?: unknown }).msg ?? 'Validation error');
+        }
+        return '';
+      })
+      .filter(Boolean);
+
+    if (messages.length > 0) {
+      return messages.join('; ');
+    }
+  }
+
+  if (input && typeof input === 'object' && 'detail' in input) {
+    return formatUnknownError((input as { detail?: unknown }).detail);
+  }
+
+  if (input && typeof input === 'object' && 'error' in input) {
+    return formatUnknownError((input as { error?: unknown }).error);
+  }
+
+  return 'Request failed';
+}
+
+async function buildApiError(response: Response): Promise<ApiError & { status: number }> {
+  const fallback = `HTTP ${response.status}: ${response.statusText}`;
+  const payload = await response.json().catch(() => ({ error: fallback }));
+  const normalizedMessage = formatUnknownError(payload) || fallback;
+
+  return {
+    status: response.status,
+    error: normalizedMessage,
+    message: normalizedMessage,
+    details: Array.isArray((payload as { error?: unknown })?.error)
+      ? ((payload as { error?: Array<{ loc?: unknown[]; msg?: unknown }> }).error || []).map((item) => ({
+          field: Array.isArray(item.loc) ? item.loc.join('.') : 'unknown',
+          message: String(item.msg ?? 'Validation error'),
+        }))
+      : undefined,
+  };
+}
+
 export interface WorkerAccount {
   id: string;
   email: string;
@@ -29,6 +79,43 @@ export interface WorkerAccount {
   verification_status: string;
   last_login_at?: string | null;
   created_at: string;
+}
+
+export type SubmissionStatus =
+  | 'PENDING'
+  | 'CONFIRMED'
+  | 'FLAGGED'
+  | 'UNVERIFIABLE'
+  | 'NO_SCREENSHOT';
+
+export interface VerificationSubmission {
+  id: string;
+  worker_id: string;
+  platform: string;
+  city_zone: string;
+  worker_category: string;
+  shift_date: string;
+  hours_worked: number | string;
+  gross_earned: number | string;
+  platform_deduction: number | string;
+  net_received: number | string;
+  effective_hourly_rate: number | string;
+  deduction_rate: number | string;
+  screenshot_url: string | null;
+  screenshot_public_id?: string | null;
+  verify_status: SubmissionStatus;
+  verified_by?: string | null;
+  verified_at?: string | null;
+  verifier_note?: string | null;
+  import_source: string;
+  created_at: string;
+  updated_at: string;
+  worker_full_name: string | null;
+  worker_email: string | null;
+  worker_city: string | null;
+  worker_profile_city_zone: string | null;
+  verifier_full_name?: string | null;
+  verifier_email?: string | null;
 }
 
 interface Tokens {
@@ -134,10 +221,7 @@ async function apiRequest(
   }
 
   if (!response.ok) {
-    const error: ApiError = await response.json().catch(() => ({
-      error: `HTTP ${response.status}: ${response.statusText}`,
-    }));
-    throw { status: response.status, ...error };
+    throw await buildApiError(response);
   }
 
   return response.json();
@@ -192,10 +276,7 @@ async function earningsRequest(
   }
 
   if (!response.ok) {
-    const error: ApiError = await response.json().catch(() => ({
-      error: `HTTP ${response.status}: ${response.statusText}`,
-    }));
-    throw { status: response.status, ...error };
+    throw await buildApiError(response);
   }
 
   return response.json();
@@ -247,10 +328,7 @@ async function certificateRequest(
   }
 
   if (!response.ok) {
-    const error: ApiError = await response.json().catch(() => ({
-      error: `HTTP ${response.status}: ${response.statusText}`,
-    }));
-    throw { status: response.status, ...error };
+    throw await buildApiError(response);
   }
 
   return response.json();
@@ -302,10 +380,7 @@ async function anomalyRequest(
   }
 
   if (!response.ok) {
-    const error: ApiError = await response.json().catch(() => ({
-      error: `HTTP ${response.status}: ${response.statusText}`,
-    }));
-    throw { status: response.status, ...error };
+    throw await buildApiError(response);
   }
 
   return response.json();
@@ -497,6 +572,38 @@ export const api = {
         method: 'GET',
         requiresAuth: true,
       }),
+
+    listSubmissions: (params?: {
+      statuses?: string[];
+      from_date?: string;
+      to_date?: string;
+      platform?: string;
+      city_zone?: string;
+      worker_category?: string;
+      worker_query?: string;
+      only_with_screenshot?: boolean;
+      limit?: number;
+      offset?: number;
+    }) => {
+      const query = new URLSearchParams();
+      if (params?.statuses?.length) query.append('statuses', params.statuses.join(','));
+      if (params?.from_date) query.append('from_date', params.from_date);
+      if (params?.to_date) query.append('to_date', params.to_date);
+      if (params?.platform) query.append('platform', params.platform);
+      if (params?.city_zone) query.append('city_zone', params.city_zone);
+      if (params?.worker_category) query.append('worker_category', params.worker_category);
+      if (params?.worker_query) query.append('worker_query', params.worker_query);
+      if (typeof params?.only_with_screenshot === 'boolean') {
+        query.append('only_with_screenshot', String(params.only_with_screenshot));
+      }
+      if (typeof params?.limit === 'number') query.append('limit', String(params.limit));
+      if (typeof params?.offset === 'number') query.append('offset', String(params.offset));
+
+      return earningsRequest(`/api/earnings/shifts/submissions${query.toString() ? '?' + query.toString() : ''}`, {
+        method: 'GET',
+        requiresAuth: true,
+      });
+    },
 
     verifyShift: (
       shiftId: string,
