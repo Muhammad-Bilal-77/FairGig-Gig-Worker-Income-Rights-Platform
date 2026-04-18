@@ -5,6 +5,7 @@
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:4001';
 const EARNINGS_API_BASE = import.meta.env.VITE_EARNINGS_API_URL || 'http://localhost:4002';
+const CERTIFICATE_API_BASE = import.meta.env.VITE_CERTIFICATE_API_URL || 'http://localhost:4006';
 
 export interface ApiError {
   error: string;
@@ -182,6 +183,61 @@ async function earningsRequest(
   return response.json();
 }
 
+async function certificateRequest(
+  endpoint: string,
+  options: RequestInit & { requiresAuth?: boolean } = {}
+): Promise<any> {
+  const { requiresAuth = true, ...fetchOptions } = options;
+
+  let url = `${CERTIFICATE_API_BASE}${endpoint}`;
+  const headers: HeadersInit = {
+    ...fetchOptions.headers,
+  };
+
+  if (!(fetchOptions.body instanceof FormData)) {
+    headers['Content-Type'] = 'application/json';
+  }
+
+  if (requiresAuth) {
+    let token = getAccessToken();
+
+    if (!token) {
+      token = await refreshAccessToken();
+    }
+
+    if (!token) {
+      throw new Error('Authentication required');
+    }
+
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
+  let response = await fetch(url, {
+    ...fetchOptions,
+    headers,
+  });
+
+  if (response.status === 401 && requiresAuth && getTokens()?.refresh_token) {
+    const newToken = await refreshAccessToken();
+    if (newToken) {
+      headers['Authorization'] = `Bearer ${newToken}`;
+      response = await fetch(url, {
+        ...fetchOptions,
+        headers,
+      });
+    }
+  }
+
+  if (!response.ok) {
+    const error: ApiError = await response.json().catch(() => ({
+      error: `HTTP ${response.status}: ${response.statusText}`,
+    }));
+    throw { status: response.status, ...error };
+  }
+
+  return response.json();
+}
+
 export const api = {
   // Auth endpoints
   signup: (data: {
@@ -302,5 +358,68 @@ export const api = {
         requiresAuth: true,
       });
     },
+
+    // Analytics endpoints
+    getSummary: (params?: {
+      from_date?: string;
+      to_date?: string;
+    }) => {
+      const query = new URLSearchParams();
+      if (params?.from_date) query.append('from_date', params.from_date);
+      if (params?.to_date) query.append('to_date', params.to_date);
+      
+      return earningsRequest(`/api/earnings/summary${query.toString() ? '?' + query.toString() : ''}`, {
+        method: 'GET',
+        requiresAuth: true,
+      });
+    },
+
+    getMedian: (params?: {
+      city_zone?: string;
+      platform?: string;
+      worker_category?: string;
+    }) => {
+      const query = new URLSearchParams();
+      if (params?.city_zone) query.append('city_zone', params.city_zone);
+      if (params?.platform) query.append('platform', params.platform);
+      if (params?.worker_category) query.append('worker_category', params.worker_category);
+      
+      return earningsRequest(`/api/earnings/median${query.toString() ? '?' + query.toString() : ''}`, {
+        method: 'GET',
+        requiresAuth: true,
+      });
+    },
+  },
+
+  certificate: {
+    generate: (data: { from_date: string; to_date: string }) =>
+      certificateRequest('/api/certificates/generate', {
+        method: 'POST',
+        body: JSON.stringify(data),
+        requiresAuth: true,
+      }),
+
+    list: () =>
+      certificateRequest('/api/certificates', {
+        method: 'GET',
+        requiresAuth: true,
+      }),
+
+    getSummary: (certRef: string) =>
+      certificateRequest(`/api/certificates/${encodeURIComponent(certRef)}/json`, {
+        method: 'GET',
+        requiresAuth: true,
+      }),
+
+    getViewUrl: (certRef: string, download = false, type?: string) => {
+      const token = getAccessToken();
+      const baseUrl = `${CERTIFICATE_API_BASE}/api/certificates/${encodeURIComponent(certRef)}`;
+      const queryParams = new URLSearchParams();
+      if (token) queryParams.append('token', token);
+      if (download) queryParams.append('download', '1');
+      if (type) queryParams.append('type', type);
+      const qs = queryParams.toString();
+      return qs ? `${baseUrl}?${qs}` : baseUrl;
+    }
   },
 };

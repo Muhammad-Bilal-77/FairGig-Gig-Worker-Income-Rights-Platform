@@ -33,14 +33,14 @@
       justify-content: space-between;
       align-items: center;
       margin-bottom: 30px;
-      border-bottom: 3px solid #4CAF50;
+      border-bottom: 3px solid #2563eb;
       padding-bottom: 20px;
     }
 
     .logo {
       font-size: 28px;
       font-weight: bold;
-      color: #4CAF50;
+      color: #2563eb;
       letter-spacing: 1px;
     }
 
@@ -59,7 +59,7 @@
     .cert-ref-value {
       font-size: 18px;
       font-weight: bold;
-      color: #4CAF50;
+      color: #2563eb;
       font-family: 'Courier New', monospace;
     }
 
@@ -83,7 +83,7 @@
     .worker-info {
       background: #f9f9f9;
       padding: 20px;
-      border-left: 4px solid #4CAF50;
+      border-left: 4px solid #2563eb;
       margin: 25px 0;
     }
 
@@ -115,7 +115,7 @@
     }
 
     .earnings-summary {
-      background: linear-gradient(135deg, #4CAF50, #45a049);
+      background: linear-gradient(135deg, #2563eb, #1d4ed8);
       color: white;
       padding: 30px;
       border-radius: 8px;
@@ -192,7 +192,7 @@
 
     .platform-amount {
       font-weight: 600;
-      color: #4CAF50;
+      color: #2563eb;
     }
 
     .shifts-detail {
@@ -245,8 +245,8 @@
     }
 
     .badge-verified {
-      background-color: #d4edda;
-      color: #155724;
+      background-color: #dbeafe;
+      color: #1e3a8a;
     }
 
     .badge-pending {
@@ -255,8 +255,8 @@
     }
 
     .verification-section {
-      background: #e8f5e9;
-      border-left: 4px solid #4CAF50;
+      background: #eff6ff;
+      border-left: 4px solid #2563eb;
       padding: 20px;
       margin: 30px 0;
       border-radius: 4px;
@@ -265,7 +265,7 @@
     .verification-badge {
       font-size: 18px;
       font-weight: bold;
-      color: #2e7d32;
+      color: #1e40af;
       margin-bottom: 10px;
     }
 
@@ -291,7 +291,7 @@
 
     .footer-urdu {
       font-size: 13px;
-      color: #4CAF50;
+      color: #2563eb;
       font-weight: 600;
       margin-top: 20px;
       padding-top: 15px;
@@ -305,6 +305,21 @@
       margin-top: 10px;
     }
 
+    .verification-footer {
+      display: none;
+      text-align: center;
+      font-size: 11px;
+      color: #555;
+      margin-top: 20px;
+      padding-top: 10px;
+      border-top: 1px dashed #ccc;
+    }
+    .verification-footer a {
+      color: #2563eb;
+      text-decoration: none;
+      font-weight: bold;
+    }
+
     .no-print {
       display: block;
       text-align: center;
@@ -312,7 +327,7 @@
     }
 
     .print-button {
-      background-color: #4CAF50;
+      background-color: #2563eb;
       color: white;
       padding: 12px 30px;
       border: none;
@@ -324,13 +339,14 @@
     }
 
     .print-button:hover {
-      background-color: #45a049;
+      background-color: #1d4ed8;
     }
 
     /* Print styles */
     @media print {
       body {
         background: white;
+        padding-bottom: 40px; /* Space for fixed footer */
       }
 
       .container {
@@ -344,8 +360,36 @@
         display: none;
       }
 
-      .certificate {
+      /* Allow the main container to break, but protect inner components */
+      .header, .worker-info, .earnings-summary, .title {
         page-break-inside: avoid;
+      }
+
+      .platform-breakdown, .verification-section {
+        page-break-inside: avoid;
+      }
+      
+      .shifts-detail {
+        page-break-before: auto;
+      }
+
+      /* Prevent table rows from splitting across pages */
+      table tr {
+        page-break-inside: avoid;
+        page-break-after: auto;
+      }
+
+      /* Fixed footer on each printed page */
+      .verification-footer {
+        display: block;
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        width: 100%;
+        background: white;
+        padding: 10px 0;
+        border-top: 1px solid #ddd;
+        margin: 0;
       }
 
       a {
@@ -518,6 +562,12 @@
         Generated on {{timestamp}} | FairGig Income Documentation System
       </div>
     </div>
+  </div>
+  
+  <div class="verification-footer">
+    To authenticate this certificate and view full details, visit: 
+    <br/>
+    <a href="http://localhost:4006/api/certificates/{{certRef}}" target="_blank">http://localhost:4006/api/certificates/{{certRef}}</a>
   </div>
 </body>
 </html>

@@ -62,14 +62,25 @@ async def median_endpoint(
     result = []
     for row in rows:
         item = dict(row)
+        # Convert Decimal values to float for JSON serialization
+        if 'median_hourly_rate' in item and item['median_hourly_rate'] is not None:
+            item['median_hourly_rate'] = float(item['median_hourly_rate'])
+        if 'median_deduction_rate' in item and item['median_deduction_rate'] is not None:
+            item['median_deduction_rate'] = float(item['median_deduction_rate'])
+        if 'avg_daily_net' in item and item['avg_daily_net'] is not None:
+            item['avg_daily_net'] = float(item['avg_daily_net'])
+            
         if your_hourly_rate is not None:
-            item['your_hourly_rate'] = your_hourly_rate
-            if your_hourly_rate > item['median_hourly_rate']:
-                item['percentile_vs_median'] = 'above_median'
-            elif your_hourly_rate < item['median_hourly_rate']:
-                item['percentile_vs_median'] = 'below_median'
+            item['your_hourly_rate'] = float(your_hourly_rate) if your_hourly_rate else None
+            if your_hourly_rate and item['median_hourly_rate']:
+                if your_hourly_rate > item['median_hourly_rate']:
+                    item['percentile_vs_median'] = 'above_median'
+                elif your_hourly_rate < item['median_hourly_rate']:
+                    item['percentile_vs_median'] = 'below_median'
+                else:
+                    item['percentile_vs_median'] = 'at_median'
             else:
-                item['percentile_vs_median'] = 'at_median'
+                item['percentile_vs_median'] = None
         else:
             item['your_hourly_rate'] = None
             item['percentile_vs_median'] = None

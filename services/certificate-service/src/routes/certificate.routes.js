@@ -75,9 +75,9 @@ async function certificateRoutes(fastify) {
   fastify.get('/api/certificates/:cert_ref', async (request, reply) => {
     try {
       const { cert_ref } = request.params;
-      const readonlyPool = db.getReadonlyPool();
+      const certPool = db.getCertificatePool();
 
-      const certificate = await getCertificateByRef(readonlyPool, cert_ref);
+      const certificate = await getCertificateByRef(certPool, cert_ref);
       if (!certificate) {
         // Return HTML 404 page
         const notFoundHtml = `
@@ -103,7 +103,51 @@ async function certificateRoutes(fastify) {
       }
 
       certificateViewCount.inc();
-      reply.type('text/html').send(certificate.html_content);
+
+      let html = certificate.rendered_html;
+
+      // Migrate existing certificates to the new blue theme by replacing specific green color hex codes
+      html = html
+        .replace(/#4CAF50/gi, '#2563eb')
+        .replace(/#45a049/gi, '#1d4ed8')
+        .replace(/#d4edda/gi, '#dbeafe')
+        .replace(/#155724/gi, '#1e3a8a')
+        .replace(/#e8f5e9/gi, '#eff6ff')
+        .replace(/#2e7d32/gi, '#1e40af');
+
+      // Inject the verification footer and fix the print styles for existing certificates
+      if (!html.includes('verification-footer')) {
+        const footerHtml = `
+          <div class="verification-footer" style="display: none; text-align: center; font-size: 11px; color: #555; margin-top: 20px; padding-top: 10px; border-top: 1px dashed #ccc;">
+            To authenticate this certificate and view full details, visit: <br/>
+            <a href="http://localhost:4006/api/certificates/${cert_ref}" target="_blank" style="color: #2563eb; font-weight: bold; text-decoration: none;">http://localhost:4006/api/certificates/${cert_ref}</a>
+          </div>
+        `;
+        html = html.replace('</body>', `${footerHtml}</body>`);
+
+        const printStyleFix = `
+          <style>
+            @media print {
+              body { padding-bottom: 40px !important; }
+              .certificate { page-break-inside: auto !important; }
+              .header, .worker-info, .earnings-summary, .title, .platform-breakdown, .verification-section { page-break-inside: avoid !important; }
+              table tr { page-break-inside: avoid !important; }
+              .verification-footer { display: block !important; position: fixed; bottom: 0; left: 0; width: 100%; background: white; padding: 10px 0; border-top: 1px solid #ddd; margin: 0; }
+            }
+          </style>
+        </head>`;
+        html = html.replace('</head>', printStyleFix);
+      }
+
+      if (request.query.type === 'summary') {
+        html = html.replace('</head>', '<style>.shifts-detail { display: none !important; }</style></head>');
+      }
+
+      if (request.query.download === '1' || request.query.download === 'true') {
+        html = html.replace('</body>', '<script>window.onload = function() { window.print(); }</script></body>');
+      }
+
+      reply.type('text/html').send(html);
     } catch (err) {
       console.error('Certificate retrieval error:', err);
       reply.code(500).send({ error: 'retrieval failed', message: err.message });
@@ -117,9 +161,9 @@ async function certificateRoutes(fastify) {
   fastify.get('/api/certificates', { onRequest: [authenticate] }, async (request, reply) => {
     try {
       const workerId = request.user.sub || request.user.id;
-      const readonlyPool = db.getReadonlyPool();
+      const certPool = db.getCertificatePool();
 
-      const certificates = await listCertificates(readonlyPool, workerId);
+      const certificates = await listCertificates(certPool, workerId);
       reply.send({ certificates });
     } catch (err) {
       console.error('Certificate list error:', err);
@@ -135,15 +179,15 @@ async function certificateRoutes(fastify) {
     try {
       const { cert_ref } = request.params;
       const workerId = request.user.sub || request.user.id;
-      const readonlyPool = db.getReadonlyPool();
+      const certPool = db.getCertificatePool();
 
       // First verify ownership
-      const certificate = await getCertificateByRef(readonlyPool, cert_ref);
+      const certificate = await getCertificateByRef(certPool, cert_ref);
       if (!certificate || certificate.worker_id !== workerId) {
         return reply.code(403).send({ error: 'Forbidden', message: 'You do not have access to this certificate' });
       }
 
-      const summary = await getCertificateSummary(readonlyPool, cert_ref);
+      const summary = await getCertificateSummary(certPool, cert_ref);
       reply.send(summary);
     } catch (err) {
       console.error('Certificate JSON error:', err);

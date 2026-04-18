@@ -24,7 +24,7 @@ function loadTemplate() {
  */
 async function fetchWorkerInfo(workerId) {
   try {
-    const response = await fetch(`${config.authServiceUrl}/api/internal/users/${workerId}`);
+    const response = await fetch(`${config.authServiceUrl}/internal/users/${workerId}`);
     if (response.status === 404) {
       throw new Error('Worker not found');
     }
@@ -174,17 +174,18 @@ async function generateCertificate(readonlyPool, certPool, workerId, fromDate, t
     // Step 6: Store in certificates table
     const insertQuery = `
       INSERT INTO certificates_schema.certificates (
-        id, worker_id, cert_ref, date_from, date_to,
+        id, cert_ref, worker_id, worker_name, date_from, date_to,
         total_gross, total_deductions, total_net, total_hours, shift_count, verified_count,
-        html_content, created_at
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+        rendered_html, platform_breakdown, created_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
       RETURNING id, cert_ref, created_at
     `;
 
     const insertResult = await certPool.query(insertQuery, [
       uuidv4(),
-      workerId,
       cert_ref,
+      workerId,
+      workerFullName,
       fromDate,
       toDate,
       summary.total_gross,
@@ -194,6 +195,7 @@ async function generateCertificate(readonlyPool, certPool, workerId, fromDate, t
       summary.shift_count,
       summary.verified_count,
       html,
+      JSON.stringify(summary.platform_breakdown),
       new Date(),
     ]);
 
@@ -214,9 +216,9 @@ async function generateCertificate(readonlyPool, certPool, workerId, fromDate, t
  */
 async function getCertificateByRef(readonlyPool, cert_ref) {
   const query = `
-    SELECT id, worker_id, cert_ref, date_from, date_to,
+    SELECT id, worker_id, cert_ref, worker_name, date_from, date_to,
            total_gross, total_deductions, total_net, total_hours,
-           shift_count, verified_count, html_content, created_at
+           shift_count, verified_count, rendered_html, platform_breakdown, created_at
     FROM certificates_schema.certificates
     WHERE cert_ref = $1
   `;
@@ -230,7 +232,7 @@ async function getCertificateByRef(readonlyPool, cert_ref) {
  */
 async function listCertificates(readonlyPool, workerId) {
   const query = `
-    SELECT id, cert_ref, date_from, date_to, total_net, shift_count, verified_count, created_at
+    SELECT id, cert_ref, worker_name, date_from, date_to, total_net, shift_count, verified_count, created_at
     FROM certificates_schema.certificates
     WHERE worker_id = $1
     ORDER BY created_at DESC
@@ -248,8 +250,8 @@ async function listCertificates(readonlyPool, workerId) {
  */
 async function getCertificateSummary(readonlyPool, cert_ref) {
   const query = `
-    SELECT cert_ref, date_from, date_to, total_gross, total_deductions, total_net,
-           total_hours, shift_count, verified_count, created_at
+    SELECT cert_ref, worker_name, date_from, date_to, total_gross, total_deductions, total_net,
+           total_hours, shift_count, verified_count, platform_breakdown, created_at
     FROM certificates_schema.certificates
     WHERE cert_ref = $1
   `;

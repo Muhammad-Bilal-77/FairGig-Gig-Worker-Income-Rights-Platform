@@ -5,8 +5,8 @@
 const Fastify = require('fastify');
 const config = require('./config');
 const db = require('./db');
-const jwtPlugin = require('./plugins/jwt.plugin');
-const corsPlugin = require('./plugins/cors.plugin');
+const fastifyCors = require('@fastify/cors');
+const fastifyJwt = require('@fastify/jwt');
 const { metricsMiddleware, metricsResponse } = require('./metrics');
 const certificateRoutes = require('./routes/certificate.routes');
 
@@ -26,8 +26,16 @@ async function buildApp() {
   });
 
   // Register plugins
-  await fastify.register(corsPlugin);
-  await fastify.register(jwtPlugin);
+  await fastify.register(fastifyCors, {
+    origin: true,
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Request-ID'],
+    credentials: true,
+  });
+  
+  await fastify.register(fastifyJwt, {
+    secret: config.jwtSecret,
+  });
 
   // Register middleware
   metricsMiddleware(fastify);
