@@ -4,6 +4,7 @@ FastAPI application entry point for Anomaly Service.
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException
 from fastapi.exceptions import RequestValidationError
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from asyncpg import PostgresError
 from src.database import init_db, close_db
@@ -28,6 +29,15 @@ app = FastAPI(
     version="1.0.0",
     lifespan=lifespan
 )
+
+if NODE_ENV.lower() in ('development', 'dev', 'local'):
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=['*'],
+        allow_credentials=True,
+        allow_methods=['*'],
+        allow_headers=['*'],
+    )
 
 # Add middleware
 app.middleware('http')(metrics_middleware)

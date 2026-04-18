@@ -5,6 +5,7 @@
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:4001';
 const EARNINGS_API_BASE = import.meta.env.VITE_EARNINGS_API_URL || 'http://localhost:4002';
+const ANOMALY_API_BASE = import.meta.env.VITE_ANOMALY_API_URL || 'http://localhost:4003';
 const CERTIFICATE_API_BASE = import.meta.env.VITE_CERTIFICATE_API_URL || 'http://localhost:4006';
 
 export interface ApiError {
@@ -207,6 +208,61 @@ async function certificateRequest(
   const { requiresAuth = true, ...fetchOptions } = options;
 
   let url = `${CERTIFICATE_API_BASE}${endpoint}`;
+  const headers: HeadersInit = {
+    ...fetchOptions.headers,
+  };
+
+  if (!(fetchOptions.body instanceof FormData)) {
+    headers['Content-Type'] = 'application/json';
+  }
+
+  if (requiresAuth) {
+    let token = getAccessToken();
+
+    if (!token) {
+      token = await refreshAccessToken();
+    }
+
+    if (!token) {
+      throw new Error('Authentication required');
+    }
+
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
+  let response = await fetch(url, {
+    ...fetchOptions,
+    headers,
+  });
+
+  if (response.status === 401 && requiresAuth && getTokens()?.refresh_token) {
+    const newToken = await refreshAccessToken();
+    if (newToken) {
+      headers['Authorization'] = `Bearer ${newToken}`;
+      response = await fetch(url, {
+        ...fetchOptions,
+        headers,
+      });
+    }
+  }
+
+  if (!response.ok) {
+    const error: ApiError = await response.json().catch(() => ({
+      error: `HTTP ${response.status}: ${response.statusText}`,
+    }));
+    throw { status: response.status, ...error };
+  }
+
+  return response.json();
+}
+
+async function anomalyRequest(
+  endpoint: string,
+  options: RequestInit & { requiresAuth?: boolean } = {}
+): Promise<any> {
+  const { requiresAuth = true, ...fetchOptions } = options;
+
+  let url = `${ANOMALY_API_BASE}${endpoint}`;
   const headers: HeadersInit = {
     ...fetchOptions.headers,
   };
@@ -486,5 +542,13 @@ export const api = {
       const qs = queryParams.toString();
       return qs ? `${baseUrl}?${qs}` : baseUrl;
     }
+  },
+
+  anomaly: {
+    getWorkerAnalysis: (workerId: string) =>
+      anomalyRequest(`/api/anomaly/worker/${workerId}`, {
+        method: 'GET',
+        requiresAuth: true,
+      }),
   },
 };

@@ -193,7 +193,8 @@ async def get_worker_summary(
           COALESCE(SUM(hours_worked), 0) AS total_hours,
           COUNT(*) AS shift_count,
           COALESCE(AVG(effective_hourly_rate), 0) AS avg_hourly_rate,
-          COALESCE(AVG(deduction_rate), 0) AS avg_deduction_rate
+          COALESCE(AVG(deduction_rate), 0) AS avg_deduction_rate,
+          COALESCE(SUM(net_received) FILTER (WHERE verify_status = 'CONFIRMED'), 0) AS verified_net
         FROM earnings_schema.shifts
         WHERE worker_id = $1
           AND shift_date BETWEEN $2 AND $3

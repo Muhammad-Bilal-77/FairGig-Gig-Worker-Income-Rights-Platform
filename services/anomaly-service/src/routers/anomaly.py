@@ -37,18 +37,18 @@ async def analyze(
 @router.get('/worker/{worker_id}')
 async def get_worker_analysis(
     worker_id: UUID,
-    user: dict = Depends(require_role('WORKER', 'VERIFIER', 'ADVOCATE')),
+    user: dict = Depends(require_role('worker', 'verifier', 'advocate')),
     conn = Depends(get_readonly_conn)
 ) -> AnomalyReport:
     """
     Get anomaly analysis for a specific worker.
     
     Auth: Bearer token required.
-    - WORKER can only query their own analysis
-    - VERIFIER/ADVOCATE can query any worker
+    - workers can only query their own analysis
+    - verifiers/advocates can query any worker
     """
     # Check ownership
-    if user['role'] == 'WORKER' and str(user['user_id']) != str(worker_id):
+    if user['role'] == 'worker' and str(user['user_id']) != str(worker_id):
         raise HTTPException(status_code=403, detail="Workers can only view their own analysis")
     
     detector = AnomalyDetector(conn)
