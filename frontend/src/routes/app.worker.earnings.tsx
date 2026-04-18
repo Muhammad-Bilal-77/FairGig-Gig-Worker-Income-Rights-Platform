@@ -34,6 +34,37 @@ interface Shift {
   screenshot_url?: string;
 }
 
+function extractApiErrorMessage(err: any, fallback: string): string {
+  if (!err) return fallback;
+
+  if (Array.isArray(err?.error) && err.error.length > 0) {
+    const first = err.error[0];
+    if (typeof first?.msg === 'string' && first.msg.trim()) {
+      return first.msg;
+    }
+    if (first?.ctx?.error) {
+      return String(first.ctx.error);
+    }
+  }
+
+  if (typeof err?.error === 'string' && err.error.trim()) {
+    return err.error;
+  }
+
+  if (typeof err?.detail === 'string' && err.detail.trim()) {
+    return err.detail;
+  }
+
+  if (typeof err?.message === 'string' && err.message.trim()) {
+    if (err.message.includes('Failed to fetch')) {
+      return 'Network error contacting earnings service. Please ensure backend is running on port 4002.';
+    }
+    return err.message;
+  }
+
+  return fallback;
+}
+
 function EarningsPage() {
   // Form state
   const [platform, setPlatform] = useState<string>("");
@@ -141,7 +172,7 @@ function EarningsPage() {
         setAuthError(true);
         setError('You do not have permission to view shifts. Please login as a worker.');
       } else {
-        setError("Failed to load earning records");
+        setError(extractApiErrorMessage(err, 'Failed to load earning records'));
       }
     } finally {
       setIsLoading(false);
@@ -199,9 +230,13 @@ function EarningsPage() {
     
     // Validation
     const errors: string[] = [];
+    const hoursNum = Number(hours);
     if (!platform) errors.push("Please select a platform");
     if (!shiftDate) errors.push("Please select a shift date");
-    if (!hours || Number(hours) <= 0) errors.push("Please enter hours worked");
+    if (!hours || hoursNum <= 0) errors.push("Please enter hours worked");
+    if (!Number.isNaN(hoursNum) && hoursNum > 24) {
+      errors.push("Hours worked cannot exceed 24 in one shift");
+    }
     if (!gross || Number(gross) < 0) errors.push("Please enter gross earnings");
     if (deductions && Number(deductions) < 0) errors.push("Deductions cannot be negative");
 
@@ -271,7 +306,7 @@ function EarningsPage() {
       } else if (err.status === 403) {
         setError('You do not have permission to create shifts. Please login as a worker.');
       } else {
-        setError(err instanceof Error ? err.message : "Failed to save shift");
+        setError(extractApiErrorMessage(err, 'Failed to save shift'));
       }
     } finally {
       setIsUploading(false);
@@ -311,6 +346,8 @@ function EarningsPage() {
       const hours = parseFloat(row.hours_worked);
       if (isNaN(hours) || hours < 0) {
         errors.push('Hours must be a valid positive number');
+      } else if (hours > 24) {
+        errors.push('Hours cannot exceed 24 for a single shift');
       }
     }
 
@@ -698,6 +735,9 @@ function EarningsPage() {
               <Input
                 type="number"
                 placeholder="e.g. 8"
+                min={0.25}
+                max={24}
+                step={0.25}
                 value={hours}
                 onChange={(e) => setHours(e.target.value)}
               />

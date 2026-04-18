@@ -13,6 +13,23 @@ export interface ApiError {
   details?: Array<{ field: string; message: string }>;
 }
 
+export interface WorkerAccount {
+  id: string;
+  email: string;
+  full_name: string;
+  phone?: string | null;
+  role: 'worker';
+  city?: string | null;
+  city_zone?: string | null;
+  worker_category?: string | null;
+  is_active: boolean;
+  is_verified: boolean;
+  email_verified: boolean;
+  verification_status: string;
+  last_login_at?: string | null;
+  created_at: string;
+}
+
 interface Tokens {
   access_token: string;
   refresh_token: string;
@@ -78,9 +95,9 @@ async function apiRequest(
   const { requiresAuth = false, ...fetchOptions } = options;
 
   let url = `${API_BASE}${endpoint}`;
-  const headers: HeadersInit = {
+  const headers: Record<string, string> = {
     'Content-Type': 'application/json',
-    ...fetchOptions.headers,
+    ...(fetchOptions.headers as Record<string, string>),
   };
 
   // Add auth token if required
@@ -132,8 +149,8 @@ async function earningsRequest(
   const { requiresAuth = true, ...fetchOptions } = options;
 
   let url = `${EARNINGS_API_BASE}${endpoint}`;
-  const headers: HeadersInit = {
-    ...fetchOptions.headers,
+  const headers: Record<string, string> = {
+    ...(fetchOptions.headers as Record<string, string>),
   };
 
   // Don't set Content-Type for FormData
@@ -287,6 +304,35 @@ export const api = {
       requiresAuth: true,
     }),
 
+  listWorkers: (params?: {
+    include_inactive?: boolean;
+    search?: string;
+    limit?: number;
+    offset?: number;
+  }): Promise<{ success: boolean; data: WorkerAccount[]; count: number }> => {
+    const query = new URLSearchParams();
+    if (params?.include_inactive) query.append('include_inactive', 'true');
+    if (params?.search) query.append('search', params.search);
+    if (params?.limit) query.append('limit', params.limit.toString());
+    if (params?.offset) query.append('offset', params.offset.toString());
+
+    const queryString = query.toString();
+    return apiRequest(`/api/auth/workers${queryString ? '?' + queryString : ''}`, {
+      method: 'GET',
+      requiresAuth: true,
+    });
+  },
+
+  setWorkerActiveStatus: (
+    workerId: string,
+    isActive: boolean,
+  ): Promise<{ success: boolean; data: WorkerAccount }> =>
+    apiRequest(`/api/auth/workers/${workerId}/status`, {
+      method: 'PATCH',
+      body: JSON.stringify({ is_active: isActive }),
+      requiresAuth: true,
+    }),
+
   logout: () => {
     clearTokens();
   },
@@ -358,68 +404,5 @@ export const api = {
         requiresAuth: true,
       });
     },
-
-    // Analytics endpoints
-    getSummary: (params?: {
-      from_date?: string;
-      to_date?: string;
-    }) => {
-      const query = new URLSearchParams();
-      if (params?.from_date) query.append('from_date', params.from_date);
-      if (params?.to_date) query.append('to_date', params.to_date);
-      
-      return earningsRequest(`/api/earnings/summary${query.toString() ? '?' + query.toString() : ''}`, {
-        method: 'GET',
-        requiresAuth: true,
-      });
-    },
-
-    getMedian: (params?: {
-      city_zone?: string;
-      platform?: string;
-      worker_category?: string;
-    }) => {
-      const query = new URLSearchParams();
-      if (params?.city_zone) query.append('city_zone', params.city_zone);
-      if (params?.platform) query.append('platform', params.platform);
-      if (params?.worker_category) query.append('worker_category', params.worker_category);
-      
-      return earningsRequest(`/api/earnings/median${query.toString() ? '?' + query.toString() : ''}`, {
-        method: 'GET',
-        requiresAuth: true,
-      });
-    },
-  },
-
-  certificate: {
-    generate: (data: { from_date: string; to_date: string }) =>
-      certificateRequest('/api/certificates/generate', {
-        method: 'POST',
-        body: JSON.stringify(data),
-        requiresAuth: true,
-      }),
-
-    list: () =>
-      certificateRequest('/api/certificates', {
-        method: 'GET',
-        requiresAuth: true,
-      }),
-
-    getSummary: (certRef: string) =>
-      certificateRequest(`/api/certificates/${encodeURIComponent(certRef)}/json`, {
-        method: 'GET',
-        requiresAuth: true,
-      }),
-
-    getViewUrl: (certRef: string, download = false, type?: string) => {
-      const token = getAccessToken();
-      const baseUrl = `${CERTIFICATE_API_BASE}/api/certificates/${encodeURIComponent(certRef)}`;
-      const queryParams = new URLSearchParams();
-      if (token) queryParams.append('token', token);
-      if (download) queryParams.append('download', '1');
-      if (type) queryParams.append('type', type);
-      const qs = queryParams.toString();
-      return qs ? `${baseUrl}?${qs}` : baseUrl;
-    }
   },
 };

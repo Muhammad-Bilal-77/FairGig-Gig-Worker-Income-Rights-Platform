@@ -17,8 +17,10 @@ import {
   verifyEmailToken,
   approveUser,
   resendVerificationEmail,
+  listWorkersForVerifier,
+  setWorkerActiveStatus,
 } from '../services/auth.service.js';
-import { authenticate } from '../hooks/authenticate.js';
+import { authenticate, requireRole } from '../hooks/authenticate.js';
 import {
   loginCounter,
   registerCounter,
@@ -398,6 +400,69 @@ export default async function authRoutes(fastify) {
       // Allow the 404/403/400 errors from approveUser to propagate correctly
       throw err; 
     }
+  });
+
+  // ── GET /api/auth/workers ───────────────────────────
+  // Verifier dashboard worker list (active only by default)
+  fastify.get('/workers', {
+    preHandler: [authenticate, requireRole('verifier', 'admin')],
+    schema: {
+      querystring: {
+        type: 'object',
+        properties: {
+          include_inactive: { type: 'boolean', default: false },
+          search: { type: 'string', maxLength: 150 },
+          limit: { type: 'integer', minimum: 1, maximum: 500, default: 100 },
+          offset: { type: 'integer', minimum: 0, default: 0 },
+        },
+      },
+    },
+  }, async (request, reply) => {
+    const workers = await listWorkersForVerifier({
+      includeInactive: Boolean(request.query.include_inactive),
+      search: request.query.search || null,
+      limit: request.query.limit,
+      offset: request.query.offset,
+    });
+
+    return reply.send({
+      success: true,
+      data: workers,
+      count: workers.length,
+    });
+  });
+
+  // ── PATCH /api/auth/workers/:id/status ──────────────
+  // Verifier can activate/deactivate worker accounts
+  fastify.patch('/workers/:id/status', {
+    preHandler: [authenticate, requireRole('verifier', 'admin')],
+    schema: {
+      params: {
+        type: 'object',
+        required: ['id'],
+        properties: {
+          id: { type: 'string', format: 'uuid' },
+        },
+      },
+      body: {
+        type: 'object',
+        required: ['is_active'],
+        additionalProperties: false,
+        properties: {
+          is_active: { type: 'boolean' },
+        },
+      },
+    },
+  }, async (request, reply) => {
+    const updatedWorker = await setWorkerActiveStatus(
+      request.params.id,
+      request.body.is_active
+    );
+
+    return reply.send({
+      success: true,
+      data: updatedWorker,
+    });
   });
 
 }

@@ -405,6 +405,70 @@ export async function listUsers({ role, limit = 100, offset = 0 } = {}) {
   return result.rows;
 }
 
+// ── Verifier worker management ──────────────────────────
+
+export async function listWorkersForVerifier({
+  includeInactive = false,
+  search = null,
+  limit = 100,
+  offset = 0,
+} = {}) {
+  const params = [];
+  const conditions = ["role = 'worker'"];
+
+  if (!includeInactive) {
+    conditions.push('is_active = TRUE');
+  }
+
+  if (search && search.trim()) {
+    params.push(`%${search.trim().toLowerCase()}%`);
+    conditions.push(`(
+      LOWER(full_name) LIKE $${params.length}
+      OR LOWER(email) LIKE $${params.length}
+      OR CAST(id AS TEXT) LIKE $${params.length}
+    )`);
+  }
+
+  params.push(Math.min(limit, 500), Math.max(offset, 0));
+
+  const result = await query(
+    `SELECT id, email, full_name, phone, role,
+            city, city_zone, worker_category,
+            is_active, is_verified, email_verified, verification_status,
+            last_login_at, created_at
+     FROM auth_schema.users
+     WHERE ${conditions.join(' AND ')}
+     ORDER BY created_at DESC
+     LIMIT $${params.length - 1} OFFSET $${params.length}`,
+    params
+  );
+
+  return result.rows;
+}
+
+export async function setWorkerActiveStatus(workerId, isActive) {
+  const result = await query(
+    `UPDATE auth_schema.users
+     SET is_active = $2,
+         updated_at = NOW()
+     WHERE id = $1
+       AND role = 'worker'
+     RETURNING id, email, full_name, phone, role,
+               city, city_zone, worker_category,
+               is_active, is_verified, email_verified, verification_status,
+               last_login_at, created_at`,
+    [workerId, isActive]
+  );
+
+  if (result.rows.length === 0) {
+    const err = new Error('Worker not found');
+    err.statusCode = 404;
+    throw err;
+  }
+
+  return result.rows[0];
+}
+
 // ── Resend email verification ────────────────────────────
 
 export async function resendVerificationEmail(email) {
