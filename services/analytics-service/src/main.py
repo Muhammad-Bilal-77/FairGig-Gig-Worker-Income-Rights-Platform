@@ -2,7 +2,7 @@
 
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
 from prometheus_client import generate_latest, CONTENT_TYPE_LATEST
 import logging
 import sys
@@ -114,8 +114,8 @@ async def readiness():
 @app.get("/metrics")
 async def metrics():
     """Prometheus metrics endpoint"""
-    return JSONResponse(
-        content=generate_latest(registry).decode('utf-8'),
+    return Response(
+        content=generate_latest(registry),
         media_type=CONTENT_TYPE_LATEST,
     )
 

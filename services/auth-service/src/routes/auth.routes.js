@@ -1,4 +1,5 @@
 import { randomUUID }   from 'crypto';
+import { config }       from '../config.js';
 import {
   registerBodySchema,
   loginBodySchema,
@@ -15,6 +16,7 @@ import {
   hashToken,
   verifyEmailToken,
   approveUser,
+  resendVerificationEmail,
 } from '../services/auth.service.js';
 import { authenticate } from '../hooks/authenticate.js';
 import {
@@ -90,6 +92,13 @@ export default async function authRoutes(fastify) {
           retry_after: new Date(
             Date.now() + err.secondsRemaining * 1000
           ).toISOString(),
+        });
+      }
+      if (err.code === 'EMAIL_NOT_VERIFIED') {
+        loginCounter.inc({ status: 'email_not_verified' });
+        return reply.status(403).send({
+          error: err.message,
+          code: 'EMAIL_NOT_VERIFIED',
         });
       }
       loginCounter.inc({ status: 'failure' });
@@ -244,6 +253,96 @@ export default async function authRoutes(fastify) {
     return reply.send(user);
   });
 
+  // ── GET /api/auth/profile ───────────────────────────
+  // Alias for /me — convenience endpoint
+  fastify.get('/profile', {
+    preHandler: [authenticate],
+    schema: {
+      response: { 200: safeUserSchema },
+    },
+  }, async (request, reply) => {
+    const user = await findUserById(request.user.sub);
+    if (!user) {
+      return reply.status(404).send({
+        error: 'User not found',
+        message: 'Your account may have been deactivated. Contact support.',
+      });
+    }
+    return reply.send(user);
+  });
+  // ── PUT /api/auth/me ───────────────────────────────────
+  // Update user profile
+  fastify.put('/me', {
+    preHandler: [authenticate],
+    schema: {
+      body: {
+        type: 'object',
+        properties: {
+          full_name: { type: 'string', minLength: 2, maxLength: 100 },
+          phone: { type: 'string' },
+          city: { type: 'string', maxLength: 100 },
+          city_zone: { type: 'string', maxLength: 100 },
+          worker_category: { type: 'string' },
+        },
+      },
+      response: { 200: safeUserSchema },
+    },
+  }, async (request, reply) => {
+    const userId = request.user.sub;
+    const updates = request.body;
+    
+    // Sanitize updates
+    const updateFields = {};
+    if (updates.full_name) {
+      updateFields.full_name = updates.full_name.trim().slice(0, 100);
+    }
+    if (updates.phone !== undefined) {
+      updateFields.phone = updates.phone?.trim() || null;
+    }
+    if (updates.city !== undefined) {
+      updateFields.city = updates.city?.trim() || null;
+    }
+    if (updates.city_zone !== undefined) {
+      updateFields.city_zone = updates.city_zone?.trim() || null;
+    }
+    if (updates.worker_category !== undefined) {
+      updateFields.worker_category = updates.worker_category || null;
+    }
+
+    if (Object.keys(updateFields).length === 0) {
+      return reply.status(400).send({ error: 'No fields to update' });
+    }
+
+    // Build SET clause dynamically
+    const setClause = Object.keys(updateFields)
+      .map((field) => `${field} = $${Object.keys(updateFields).indexOf(field) + 1}`)
+      .join(', ');
+
+    const values = Object.values(updateFields);
+    values.push(userId);
+
+    try {
+      const result = await query(
+        `UPDATE auth_schema.users
+         SET ${setClause}
+         WHERE id = $${values.length}
+         RETURNING id, email, full_name, phone, role,
+                   city, city_zone, worker_category,
+                   is_active, is_verified, email_verified, verification_status,
+                   last_login_at, created_at`,
+        values
+      );
+
+      if (result.rows.length === 0) {
+        return reply.status(404).send({ error: 'User not found' });
+      }
+
+      return reply.send(result.rows[0]);
+    } catch (err) {
+      fastify.log.error(err);
+      throw err;
+    }
+  });
   // ── POST /api/auth/verify-email ──────────────────────
   fastify.post('/verify-email', {
     schema: {
@@ -257,6 +356,21 @@ export default async function authRoutes(fastify) {
     const { token } = request.body;
     await verifyEmailToken(token);
     return reply.send({ message: 'Email verified successfully. Your account is now pending manual approval.' });
+  });
+
+  // ── POST /api/auth/resend-verification ────────────────
+  fastify.post('/resend-verification', {
+    schema: {
+      body: {
+        type: 'object',
+        required: ['email'],
+        properties: { email: { type: 'string', format: 'email' } }
+      }
+    }
+  }, async (request, reply) => {
+    const { email } = request.body;
+    const result = await resendVerificationEmail(email);
+    return reply.send(result);
   });
 
   // ── POST /api/auth/approve ───────────────────────────

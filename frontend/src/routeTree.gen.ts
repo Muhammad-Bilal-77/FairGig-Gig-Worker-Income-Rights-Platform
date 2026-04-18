@@ -9,7 +9,9 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as VerifyEmailRouteImport } from './routes/verify-email'
 import { Route as LoginRouteImport } from './routes/login'
+import { Route as CheckEmailRouteImport } from './routes/check-email'
 import { Route as AppRouteImport } from './routes/app'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AppWorkerIndexRouteImport } from './routes/app.worker.index'
@@ -23,9 +25,19 @@ import { Route as AppVerifierStatsRouteImport } from './routes/app.verifier.stat
 import { Route as AppAdvocateVulnerabilityRouteImport } from './routes/app.advocate.vulnerability'
 import { Route as AppAdvocateComplaintsRouteImport } from './routes/app.advocate.complaints'
 
+const VerifyEmailRoute = VerifyEmailRouteImport.update({
+  id: '/verify-email',
+  path: '/verify-email',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CheckEmailRoute = CheckEmailRouteImport.update({
+  id: '/check-email',
+  path: '/check-email',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AppRoute = AppRouteImport.update({
@@ -93,7 +105,9 @@ const AppAdvocateComplaintsRoute = AppAdvocateComplaintsRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/app': typeof AppRouteWithChildren
+  '/check-email': typeof CheckEmailRoute
   '/login': typeof LoginRoute
+  '/verify-email': typeof VerifyEmailRoute
   '/app/advocate/complaints': typeof AppAdvocateComplaintsRoute
   '/app/advocate/vulnerability': typeof AppAdvocateVulnerabilityRoute
   '/app/verifier/stats': typeof AppVerifierStatsRoute
@@ -108,7 +122,9 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/app': typeof AppRouteWithChildren
+  '/check-email': typeof CheckEmailRoute
   '/login': typeof LoginRoute
+  '/verify-email': typeof VerifyEmailRoute
   '/app/advocate/complaints': typeof AppAdvocateComplaintsRoute
   '/app/advocate/vulnerability': typeof AppAdvocateVulnerabilityRoute
   '/app/verifier/stats': typeof AppVerifierStatsRoute
@@ -124,7 +140,9 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/app': typeof AppRouteWithChildren
+  '/check-email': typeof CheckEmailRoute
   '/login': typeof LoginRoute
+  '/verify-email': typeof VerifyEmailRoute
   '/app/advocate/complaints': typeof AppAdvocateComplaintsRoute
   '/app/advocate/vulnerability': typeof AppAdvocateVulnerabilityRoute
   '/app/verifier/stats': typeof AppVerifierStatsRoute
@@ -141,7 +159,9 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/app'
+    | '/check-email'
     | '/login'
+    | '/verify-email'
     | '/app/advocate/complaints'
     | '/app/advocate/vulnerability'
     | '/app/verifier/stats'
@@ -156,7 +176,9 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/app'
+    | '/check-email'
     | '/login'
+    | '/verify-email'
     | '/app/advocate/complaints'
     | '/app/advocate/vulnerability'
     | '/app/verifier/stats'
@@ -171,7 +193,9 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/app'
+    | '/check-email'
     | '/login'
+    | '/verify-email'
     | '/app/advocate/complaints'
     | '/app/advocate/vulnerability'
     | '/app/verifier/stats'
@@ -187,16 +211,32 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AppRoute: typeof AppRouteWithChildren
+  CheckEmailRoute: typeof CheckEmailRoute
   LoginRoute: typeof LoginRoute
+  VerifyEmailRoute: typeof VerifyEmailRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/verify-email': {
+      id: '/verify-email'
+      path: '/verify-email'
+      fullPath: '/verify-email'
+      preLoaderRoute: typeof VerifyEmailRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/login': {
       id: '/login'
       path: '/login'
       fullPath: '/login'
       preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/check-email': {
+      id: '/check-email'
+      path: '/check-email'
+      fullPath: '/check-email'
+      preLoaderRoute: typeof CheckEmailRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/app': {
@@ -317,7 +357,9 @@ const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AppRoute: AppRouteWithChildren,
+  CheckEmailRoute: CheckEmailRoute,
   LoginRoute: LoginRoute,
+  VerifyEmailRoute: VerifyEmailRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

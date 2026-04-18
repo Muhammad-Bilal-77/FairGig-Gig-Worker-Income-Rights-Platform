@@ -114,6 +114,33 @@ services:
     depends_on:
       - prometheus
 
+  # ── Auth Service ───────────────────────────────────────
+  auth-service:
+    build:
+      context: .
+      dockerfile: services/auth-service/Dockerfile
+    container_name: fairgig-auth-service
+    restart: unless-stopped
+    environment:
+      AUTH_DB_URL: postgresql://auth_svc:auth_svc_secret_2026@postgres:5432/fairgig
+      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:-dev_access_secret_change_me}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:-dev_refresh_secret_change_me}
+      AUTH_PORT: ${AUTH_PORT:-4001}
+      NODE_ENV: ${NODE_ENV:-development}
+      EMAIL_HOST: ${EMAIL_HOST:-localhost}
+      EMAIL_PORT: ${EMAIL_PORT:-1025}
+      EMAIL_USE_TLS: ${EMAIL_USE_TLS:-false}
+      EMAIL_HOST_USER: ${EMAIL_HOST_USER:-dev@fairgig.local}
+      EMAIL_HOST_PASSWORD: ${EMAIL_HOST_PASSWORD:-dev_password}
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:8081}
+    ports:
+      - "4001:4001"
+    networks:
+      - fairgig-net
+    depends_on:
+      postgres:
+        condition: service_healthy
+
   # ── Earnings Service ────────────────────────────────────
   earnings-service:
     build:

@@ -74,4 +74,9 @@ export const config = {
   log: {
     level: process.env.LOG_LEVEL || 'info',
   },
+
+  frontend: {
+    // Base URL for frontend verification links — configurable for dev/staging/prod
+    baseUrl: process.env.FRONTEND_URL || 'http://localhost:8081',
+  },
 };

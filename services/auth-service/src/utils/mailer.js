@@ -18,8 +18,8 @@ const transporter = nodemailer.createTransport({
  * @param {string} name - The user's full name
  */
 export async function sendVerificationEmail(toEmail, token, name) {
-  // Assuming a NEXT.js frontend runs on localhost:3000
-  const verificationLink = `http://localhost:3000/auth/verify?token=${token}&email=${encodeURIComponent(toEmail)}`;
+  // Use configurable frontend URL
+  const verificationLink = `${config.frontend.baseUrl}/verify-email?token=${token}`;
 
   const mailOptions = {
     from: `"FairGig Verification" <${config.smtp.user}>`,

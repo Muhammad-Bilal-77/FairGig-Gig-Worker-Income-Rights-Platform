@@ -16,9 +16,11 @@ import {
   Menu,
   X,
   Sparkles,
+  Clock,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 type NavItem = { to: string; label: string; icon: React.ComponentType<{ className?: string }> };
 
@@ -185,7 +187,21 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </div>
         )}
 
-        <main className="flex-1 min-w-0">{children}</main>
+        <main className="flex-1 min-w-0">
+          {user.verification_status === "PENDING_APPROVAL" && (
+            <div className="border-b bg-amber-50/50">
+              <div className="max-w-7xl mx-auto px-5 sm:px-8 py-3">
+                <Alert className="bg-amber-50 border-amber-200">
+                  <Clock className="h-4 w-4 text-amber-600" />
+                  <AlertDescription className="text-amber-800">
+                    Your account is pending verification by the FairGig team. We'll review your information and send you a confirmation email soon.
+                  </AlertDescription>
+                </Alert>
+              </div>
+            </div>
+          )}
+          {children}
+        </main>
       </div>
     </div>
   );

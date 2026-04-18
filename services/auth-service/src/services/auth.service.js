@@ -172,6 +172,14 @@ export async function verifyCredentials(email, password) {
     throw err;
   }
 
+  // Check if email has been verified
+  if (!user.email_verified) {
+    const err = new Error('Email not verified. Please check your email for the verification link.');
+    err.statusCode = 403;
+    err.code = 'EMAIL_NOT_VERIFIED';
+    throw err;
+  }
+
   // Successful login — reset lockout counters
   await query(
     `UPDATE auth_schema.users
@@ -395,4 +403,42 @@ export async function listUsers({ role, limit = 100, offset = 0 } = {}) {
   );
 
   return result.rows;
+}
+
+// ── Resend email verification ────────────────────────────
+
+export async function resendVerificationEmail(email) {
+  const normalizedEmail = email.toLowerCase().trim();
+  const user = await findUserByEmailInternal(normalizedEmail);
+
+  if (!user) {
+    // Don't reveal if email exists (privacy) — just return success
+    return { message: 'If this email is registered, a verification link will be sent.' };
+  }
+
+  // User already verified
+  if (user.email_verified) {
+    const err = new Error('Email already verified. You can now log in.');
+    err.statusCode = 400;
+    throw err;
+  }
+
+  // Clean up any old unexpired tokens — they would be invalid anyway
+  await query('DELETE FROM auth_schema.email_tokens WHERE user_id = $1', [user.id]);
+
+  // Generate new token
+  const rawToken = randomBytes(32).toString('hex');
+  const hashedToken = hashToken(rawToken);
+  const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+
+  await query(
+    `INSERT INTO auth_schema.email_tokens (user_id, token_hash, expires_at)
+     VALUES ($1, $2, $3)`,
+    [user.id, hashedToken, expiresAt]
+  );
+
+  // Send email (non-blocking)
+  sendVerificationEmail(normalizedEmail, rawToken, user.full_name);
+
+  return { message: 'Verification email sent.' };
 }

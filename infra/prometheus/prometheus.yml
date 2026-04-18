@@ -5,30 +5,30 @@ global:
 scrape_configs:
   - job_name: 'auth-service'
     static_configs:
-      - targets: ['host.docker.internal:4001']
+      - targets: ['auth-service:4001']
     metrics_path: '/metrics'
 
   - job_name: 'earnings-service'
     static_configs:
-      - targets: ['host.docker.internal:4002']
+      - targets: ['earnings-service:4002']
     metrics_path: '/metrics'
 
   - job_name: 'anomaly-service'
     static_configs:
-      - targets: ['host.docker.internal:4003']
+      - targets: ['anomaly-service:4003']
     metrics_path: '/metrics'
 
   - job_name: 'grievance-service'
     static_configs:
-      - targets: ['host.docker.internal:4004']
+      - targets: ['grievance-service:4004']
     metrics_path: '/metrics'
 
   - job_name: 'analytics-service'
     static_configs:
-      - targets: ['host.docker.internal:4005']
+      - targets: ['analytics-service:4005']
     metrics_path: '/metrics'
 
   - job_name: 'certificate-service'
     static_configs:
-      - targets: ['host.docker.internal:4006']
+      - targets: ['certificate-service:4006']
     metrics_path: '/metrics'
