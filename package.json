@@ -1,0 +1,21 @@
+{
+  "name": "fairgig",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "infra:up": "docker compose up -d",
+    "infra:down": "docker compose down",
+    "infra:reset": "docker compose down -v && docker compose up -d",
+    "infra:logs": "docker compose logs -f",
+    "auth": "cd services/auth-service && npm run dev",
+    "earnings": "cd services/earnings-service && uvicorn src.main:app --reload --port 4002",
+    "anomaly": "cd services/anomaly-service && uvicorn src.main:app --reload --port 4003",
+    "grievance": "cd services/grievance-service && npm run dev",
+    "analytics": "cd services/analytics-service && uvicorn src.main:app --reload --port 4005",
+    "certificate": "cd services/certificate-service && npm run dev",
+    "frontend": "cd frontend && npm run dev"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}

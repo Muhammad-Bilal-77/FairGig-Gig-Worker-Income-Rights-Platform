@@ -1,0 +1,34 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: 'auth-service'
+    static_configs:
+      - targets: ['host.docker.internal:4001']
+    metrics_path: '/metrics'
+
+  - job_name: 'earnings-service'
+    static_configs:
+      - targets: ['host.docker.internal:4002']
+    metrics_path: '/metrics'
+
+  - job_name: 'anomaly-service'
+    static_configs:
+      - targets: ['host.docker.internal:4003']
+    metrics_path: '/metrics'
+
+  - job_name: 'grievance-service'
+    static_configs:
+      - targets: ['host.docker.internal:4004']
+    metrics_path: '/metrics'
+
+  - job_name: 'analytics-service'
+    static_configs:
+      - targets: ['host.docker.internal:4005']
+    metrics_path: '/metrics'
+
+  - job_name: 'certificate-service'
+    static_configs:
+      - targets: ['host.docker.internal:4006']
+    metrics_path: '/metrics'

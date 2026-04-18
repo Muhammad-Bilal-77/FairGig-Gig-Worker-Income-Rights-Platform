@@ -1,0 +1,1 @@
+# Earnings service dependencies — will be populated in service build prompt
