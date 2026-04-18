@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FairGig Income Certificate - {{workerName}}</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+      background-color: #f5f5f5;
+      line-height: 1.6;
+      color: #333;
+    }
+
+    .container {
+      max-width: 900px;
+      margin: 20px auto;
+      background: white;
+      padding: 40px;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+      print-color-adjust: exact;
+      -webkit-print-color-adjust: exact;
+    }
+
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 30px;
+      border-bottom: 3px solid #4CAF50;
+      padding-bottom: 20px;
+    }
+
+    .logo {
+      font-size: 28px;
+      font-weight: bold;
+      color: #4CAF50;
+      letter-spacing: 1px;
+    }
+
+    .logo-subtitle {
+      font-size: 12px;
+      color: #888;
+      margin-top: 3px;
+    }
+
+    .cert-ref {
+      text-align: right;
+      font-size: 12px;
+      color: #666;
+    }
+
+    .cert-ref-value {
+      font-size: 18px;
+      font-weight: bold;
+      color: #4CAF50;
+      font-family: 'Courier New', monospace;
+    }
+
+    .title {
+      text-align: center;
+      margin: 30px 0;
+    }
+
+    .title h1 {
+      font-size: 32px;
+      color: #333;
+      margin-bottom: 10px;
+    }
+
+    .title p {
+      font-size: 14px;
+      color: #666;
+      font-style: italic;
+    }
+
+    .worker-info {
+      background: #f9f9f9;
+      padding: 20px;
+      border-left: 4px solid #4CAF50;
+      margin: 25px 0;
+    }
+
+    .info-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 30px;
+      margin-bottom: 15px;
+    }
+
+    .info-item {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .info-label {
+      font-size: 12px;
+      color: #888;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 5px;
+      font-weight: 600;
+    }
+
+    .info-value {
+      font-size: 16px;
+      color: #333;
+      font-weight: 500;
+    }
+
+    .earnings-summary {
+      background: linear-gradient(135deg, #4CAF50, #45a049);
+      color: white;
+      padding: 30px;
+      border-radius: 8px;
+      margin: 30px 0;
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 20px;
+      text-align: center;
+    }
+
+    .earnings-item h3 {
+      font-size: 12px;
+      text-transform: uppercase;
+      opacity: 0.9;
+      margin-bottom: 8px;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+    }
+
+    .earnings-item .value {
+      font-size: 24px;
+      font-weight: bold;
+      margin-bottom: 3px;
+    }
+
+    .earnings-item .unit {
+      font-size: 11px;
+      opacity: 0.8;
+    }
+
+    .platform-breakdown {
+      margin: 30px 0;
+    }
+
+    .platform-breakdown h3 {
+      font-size: 16px;
+      color: #333;
+      margin-bottom: 15px;
+      padding-bottom: 10px;
+      border-bottom: 2px solid #e0e0e0;
+    }
+
+    .platform-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    .platform-table thead {
+      background-color: #f5f5f5;
+    }
+
+    .platform-table th,
+    .platform-table td {
+      padding: 12px;
+      text-align: left;
+      border-bottom: 1px solid #ddd;
+    }
+
+    .platform-table th {
+      font-weight: 600;
+      color: #666;
+      font-size: 13px;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+    }
+
+    .platform-table td {
+      font-size: 14px;
+    }
+
+    .platform-table tbody tr:hover {
+      background-color: #fafafa;
+    }
+
+    .platform-amount {
+      font-weight: 600;
+      color: #4CAF50;
+    }
+
+    .shifts-detail {
+      margin: 30px 0;
+    }
+
+    .shifts-detail h3 {
+      font-size: 16px;
+      color: #333;
+      margin-bottom: 15px;
+      padding-bottom: 10px;
+      border-bottom: 2px solid #e0e0e0;
+    }
+
+    .shifts-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+
+    .shifts-table thead {
+      background-color: #f5f5f5;
+    }
+
+    .shifts-table th {
+      padding: 10px;
+      text-align: left;
+      font-weight: 600;
+      color: #666;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+      border-bottom: 2px solid #ddd;
+    }
+
+    .shifts-table td {
+      padding: 10px;
+      border-bottom: 1px solid #ddd;
+    }
+
+    .shifts-table tbody tr:nth-child(even) {
+      background-color: #fafafa;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 4px 8px;
+      border-radius: 3px;
+      font-size: 11px;
+      font-weight: 600;
+    }
+
+    .badge-verified {
+      background-color: #d4edda;
+      color: #155724;
+    }
+
+    .badge-pending {
+      background-color: #fff3cd;
+      color: #856404;
+    }
+
+    .verification-section {
+      background: #e8f5e9;
+      border-left: 4px solid #4CAF50;
+      padding: 20px;
+      margin: 30px 0;
+      border-radius: 4px;
+    }
+
+    .verification-badge {
+      font-size: 18px;
+      font-weight: bold;
+      color: #2e7d32;
+      margin-bottom: 10px;
+    }
+
+    .verification-note {
+      font-size: 13px;
+      color: #555;
+      line-height: 1.7;
+    }
+
+    .footer {
+      margin-top: 40px;
+      padding-top: 20px;
+      border-top: 1px solid #ddd;
+      font-size: 12px;
+      color: #666;
+      text-align: center;
+    }
+
+    .footer-text {
+      margin-bottom: 15px;
+      line-height: 1.6;
+    }
+
+    .footer-urdu {
+      font-size: 13px;
+      color: #4CAF50;
+      font-weight: 600;
+      margin-top: 20px;
+      padding-top: 15px;
+      border-top: 1px solid #e0e0e0;
+      direction: rtl;
+    }
+
+    .timestamp {
+      font-size: 11px;
+      color: #999;
+      margin-top: 10px;
+    }
+
+    .no-print {
+      display: block;
+      text-align: center;
+      margin-bottom: 20px;
+    }
+
+    .print-button {
+      background-color: #4CAF50;
+      color: white;
+      padding: 12px 30px;
+      border: none;
+      border-radius: 4px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background-color 0.3s ease;
+    }
+
+    .print-button:hover {
+      background-color: #45a049;
+    }
+
+    /* Print styles */
+    @media print {
+      body {
+        background: white;
+      }
+
+      .container {
+        max-width: 100%;
+        margin: 0;
+        padding: 0;
+        box-shadow: none;
+      }
+
+      .no-print {
+        display: none;
+      }
+
+      .certificate {
+        page-break-inside: avoid;
+      }
+
+      a {
+        text-decoration: none;
+        color: inherit;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="no-print">
+    <button class="print-button" onclick="window.print()">🖨️ Print / Save as PDF</button>
+  </div>
+
+  <div class="container certificate">
+    <!-- Header -->
+    <div class="header">
+      <div>
+        <div class="logo">FairGig</div>
+        <div class="logo-subtitle">Income Certificate</div>
+      </div>
+      <div class="cert-ref">
+        <div>Certificate ID</div>
+        <div class="cert-ref-value">{{certRef}}</div>
+      </div>
+    </div>
+
+    <!-- Title -->
+    <div class="title">
+      <h1>{{workerName}}</h1>
+      <p>Income Certificate for {{fromDate}} to {{toDate}}</p>
+    </div>
+
+    <!-- Worker Info -->
+    <div class="worker-info">
+      <div class="info-row">
+        <div class="info-item">
+          <div class="info-label">Certificate Period</div>
+          <div class="info-value">{{fromDate}} to {{toDate}}</div>
+        </div>
+        <div class="info-item">
+          <div class="info-label">Total Shifts</div>
+          <div class="info-value">{{summary.shift_count}}</div>
+        </div>
+      </div>
+      <div class="info-row">
+        <div class="info-item">
+          <div class="info-label">Certificate Generated</div>
+          <div class="info-value">{{timestamp}}</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Earnings Summary -->
+    <div class="earnings-summary">
+      <div class="earnings-item">
+        <h3>Total Net Earnings</h3>
+        <div class="value">PKR {{summary.totalNetFormatted}}</div>
+      </div>
+      <div class="earnings-item">
+        <h3>Total Hours</h3>
+        <div class="value">{{summary.totalHoursFormatted}}</div>
+        <div class="unit">hours</div>
+      </div>
+      <div class="earnings-item">
+        <h3>Avg. Hourly Rate</h3>
+        <div class="value">PKR {{summary.avgHourlyRateFormatted}}</div>
+        <div class="unit">per hour</div>
+      </div>
+      <div class="earnings-item">
+        <h3>Gross Earnings</h3>
+        <div class="value">PKR {{summary.total_gross}}</div>
+      </div>
+    </div>
+
+    <!-- Platform Breakdown -->
+    {{#if platformBreakdown}}
+    <div class="platform-breakdown">
+      <h3>Earnings by Platform</h3>
+      <table class="platform-table">
+        <thead>
+          <tr>
+            <th>Platform</th>
+            <th style="text-align: right;">Net Earnings (PKR)</th>
+          </tr>
+        </thead>
+        <tbody>
+          {{#each platformBreakdown}}
+          <tr>
+            <td><strong>{{this.platform}}</strong></td>
+            <td style="text-align: right;"><span class="platform-amount">{{this.net}}</span></td>
+          </tr>
+          {{/each}}
+        </tbody>
+      </table>
+    </div>
+    {{/if}}
+
+    <!-- Verification Status -->
+    <div class="verification-section">
+      <div class="verification-badge">✓ {{summary.verificationBadge}}</div>
+      <div class="verification-note">
+        This income certificate records the worker's self-reported earnings. Shifts marked as "Verified" have been
+        reviewed by a FairGig verifier against platform screenshots and are considered confirmed income.
+      </div>
+    </div>
+
+    <!-- Shifts Detail Table -->
+    {{#if shifts}}
+    <div class="shifts-detail">
+      <h3>Detailed Shift History</h3>
+      <table class="shifts-table">
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Platform</th>
+            <th style="text-align: right;">Hours</th>
+            <th style="text-align: right;">Gross (PKR)</th>
+            <th style="text-align: right;">Deduction (PKR)</th>
+            <th style="text-align: right;">Net (PKR)</th>
+            <th style="text-align: right;">Hourly Rate</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {{#each shifts}}
+          <tr>
+            <td>{{this.shiftDate}}</td>
+            <td>{{this.platform}}</td>
+            <td style="text-align: right;">{{this.hours_worked}}</td>
+            <td style="text-align: right;">{{this.grossEarned}}</td>
+            <td style="text-align: right;">{{this.platformDeduction}}</td>
+            <td style="text-align: right;"><strong>{{this.netReceived}}</strong></td>
+            <td style="text-align: right;">{{this.effectiveHourlyRate}}</td>
+            <td>
+              {{#if this.isVerified}}
+              <span class="badge badge-verified">Verified</span>
+              {{else}}
+              <span class="badge badge-pending">Pending</span>
+              {{/if}}
+            </td>
+          </tr>
+          {{/each}}
+        </tbody>
+      </table>
+    </div>
+    {{/if}}
+
+    <!-- Footer -->
+    <div class="footer">
+      <div class="footer-text">
+        <strong>About This Certificate</strong>
+        <div style="margin-top: 8px; line-height: 1.8;">
+          This income certificate is generated by FairGig and records the self-reported earnings of the gig worker
+          for the specified period. The earnings shown are based on data collected from platform APIs and worker
+          records. Shifts marked as "Verified" have been reviewed by a FairGig verifier against platform screenshots
+          and are considered confirmed income. This certificate can be used for financial verification purposes with
+          banks, landlords, and other institutions. FairGig does not guarantee the accuracy of self-reported earnings
+          and recommends that institutions verify critical information independently.
+        </div>
+      </div>
+
+      <div class="footer-urdu">
+        یہ سرٹیفکیٹ گگ ورکر کی آمدنی کا ریکارڈ ہے
+        <br />
+        (This certificate is a record of the gig worker's income)
+      </div>
+
+      <div class="timestamp">
+        Generated on {{timestamp}} | FairGig Income Documentation System
+      </div>
+    </div>
+  </div>
+</body>
+</html>

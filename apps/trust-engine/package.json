@@ -1,0 +1,29 @@
+{
+  "name": "@trust-network/trust-engine",
+  "version": "1.0.0",
+  "scripts": {
+    "dev": "tsx watch src/index.ts --env-file ../../.env",
+    "build": "tsc",
+    "start": "node dist/index.js"
+  },
+  "dependencies": {
+    "@trust-network/auth-middleware": "workspace:*",
+    "@trust-network/kafka-client": "workspace:*",
+    "@trust-network/shared-types": "workspace:*",
+    "bullmq": "^5.1.1",
+    "fastify": "^4.25.2",
+    "@fastify/cors": "^8.5.0",
+    "@fastify/helmet": "^11.1.1",
+    "@fastify/websocket": "^8.3.1",
+    "ioredis": "^5.3.2",
+    "neo4j-driver": "^5.17.0",
+    "prom-client": "^15.1.0",
+    "winston": "^3.11.0",
+    "zod": "^3.22.4"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "tsx": "^4.7.0",
+    "typescript": "^5.3.3"
+  }
+}

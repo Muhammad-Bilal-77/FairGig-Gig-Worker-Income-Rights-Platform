@@ -1,0 +1,3 @@
+platform,city_zone,worker_category,shift_date,hours_worked,gross_earned,platform_deduction,net_received
+Careem,DHA,ride_hailing,2026-03-15,6.00,7200.00,2160.00,5040.00
+Bykea,DHA,ride_hailing,2026-03-16,5.00,4500.00,1125.00,3375.00

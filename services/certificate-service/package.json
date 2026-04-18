@@ -1,2 +1,27 @@
 {
+  "name": "certificate-service",
+  "version": "1.0.0",
+  "description": "FairGig Certificate Renderer Service - Generate income certificates for gig workers",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "nodemon src/index.js",
+    "test": "jest"
+  },
+  "dependencies": {
+    "fastify": "^4.24.3",
+    "@fastify/jwt": "^7.0.0",
+    "@fastify/cors": "^8.4.2",
+    "pg": "^8.11.3",
+    "prom-client": "^15.0.0",
+    "dotenv": "^16.3.1",
+    "uuid": "^9.0.1",
+    "handlebars": "^4.7.8",
+    "pino-pretty": "^10.3.1"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.2",
+    "jest": "^29.7.0"
+  }
 }
+
