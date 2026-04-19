@@ -1,0 +1,117 @@
+@import "./styles.css";
+
+@theme inline {
+  --color-primary-glow: var(--primary-glow);
+  --color-surface: var(--surface);
+  --color-surface-foreground: var(--surface-foreground);
+
+  --animate-marquee: marquee 40s linear infinite;
+  --animate-float: float 6s ease-in-out infinite;
+  --animate-gradient-x: gradient-x 8s ease infinite;
+
+  @keyframes marquee {
+    from {
+      transform: translateX(0);
+    }
+    to {
+      transform: translateX(-50%);
+    }
+  }
+
+  @keyframes float {
+    0%,
+    100% {
+      transform: translateY(0);
+    }
+    50% {
+      transform: translateY(-12px);
+    }
+  }
+
+  @keyframes gradient-x {
+    0%,
+    100% {
+      background-position: 0% 50%;
+    }
+    50% {
+      background-position: 100% 50%;
+    }
+  }
+}
+
+:root {
+  --primary-glow: oklch(0.72 0.16 235);
+  --surface: oklch(1 0 0);
+  --surface-foreground: oklch(0.18 0.04 265);
+}
+
+.dark {
+  --primary-glow: oklch(0.75 0.16 235);
+  --surface: oklch(0.2 0.025 265);
+  --surface-foreground: oklch(0.96 0.005 250);
+}
+
+@layer utilities {
+  .hero-mesh {
+    background:
+      radial-gradient(
+        ellipse 80% 60% at 50% 0%,
+        color-mix(in oklab, var(--primary) 14%, transparent),
+        transparent 60%
+      ),
+      radial-gradient(
+        ellipse 60% 40% at 20% 10%,
+        color-mix(in oklab, var(--primary-glow) 12%, transparent),
+        transparent 60%
+      ),
+      radial-gradient(
+        ellipse 60% 40% at 80% 0%,
+        color-mix(in oklab, var(--primary) 10%, transparent),
+        transparent 60%
+      );
+  }
+
+  .text-gradient-primary {
+    background: linear-gradient(
+      120deg,
+      var(--primary) 0%,
+      var(--primary-glow) 35%,
+      oklch(0.78 0.16 200) 55%,
+      var(--primary-glow) 75%,
+      var(--primary) 100%
+    );
+    background-size: 220% 220%;
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    animation: var(--animate-gradient-x);
+  }
+
+  .glass {
+    background: color-mix(in oklab, var(--surface) 70%, transparent);
+    -webkit-backdrop-filter: blur(12px);
+    backdrop-filter: blur(12px);
+  }
+
+  .marquee-mask {
+    -webkit-mask-image: linear-gradient(to right, transparent, black 10%, black 90%, transparent);
+    mask-image: linear-gradient(to right, transparent, black 10%, black 90%, transparent);
+  }
+
+  .marquee-track {
+    display: flex;
+    width: max-content;
+    animation: marquee 40s linear infinite;
+    will-change: transform;
+  }
+
+  .marquee-container:hover .marquee-track {
+    animation-play-state: paused;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .marquee-track {
+      animation: none;
+    }
+  }
+}
