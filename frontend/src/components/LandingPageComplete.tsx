@@ -18,6 +18,11 @@ import dashboardHeroImage from "@/assets/dashboard-hero.png";
 import roleWorkerImage from "@/assets/role-worker.png";
 import roleVerifierImage from "@/assets/role-verifier.png";
 import roleAdvocateImage from "@/assets/role-advocate.png";
+import { useAuth } from "@/hooks/useAuth";
+import { ROLE_HOME, ROLE_LABEL, logout } from "@/lib/auth";
+import { Link, useNavigate } from "@tanstack/react-router";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { LogOut, User as UserIcon, LayoutDashboard } from "lucide-react";
 
 const EarningsChart = lazy(() => import("@/components/landing/EarningsChart"));
 
@@ -315,22 +320,61 @@ const stagger = {
 
 // NAVBAR
 function Navbar() {
+  const { user, authenticated } = useAuth();
+
   return (
     <header className="sticky top-0 z-50 w-full">
       <div className="glass border-b border-border/60">
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-6">
-          <a href="#" className="flex items-center gap-2">
+          <Link title="FairGig Home" to="/" className="flex items-center gap-2">
             <img src={logoImage} alt="FairGig" className="h-8 w-8 rounded-lg object-contain" />
             <span className="text-lg font-bold tracking-tight">FairGig</span>
-          </a>
-          <div className="flex items-center gap-2">
-            <button className="hidden rounded-lg px-4 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground sm:inline-flex">
-              Sign in
-            </button>
-            <button className="group inline-flex items-center gap-1.5 rounded-lg bg-foreground px-4 py-2 text-sm font-medium text-background transition-all duration-300 hover:opacity-90">
-              Get started
-              <ArrowRight className="h-3.5 w-3.5 transition-transform duration-300 group-hover:translate-x-0.5" />
-            </button>
+          </Link>
+          <div className="flex items-center gap-3">
+            {!authenticated ? (
+              <>
+                <Link 
+                  to="/login"
+                  className="hidden rounded-lg px-4 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground sm:inline-flex"
+                >
+                  Sign in
+                </Link>
+                <Link 
+                  to="/login"
+                  className="group inline-flex items-center gap-1.5 rounded-lg bg-foreground px-4 py-2 text-sm font-medium text-background transition-all duration-300 hover:opacity-90"
+                >
+                  Join FairGig
+                  <ArrowRight className="h-3.5 w-3.5 transition-transform duration-300 group-hover:translate-x-0.5" />
+                </Link>
+              </>
+            ) : (
+              <div className="flex items-center gap-4">
+                <div className="hidden sm:flex flex-col items-end">
+                  <span className="text-sm font-semibold leading-tight">{user?.name}</span>
+                  <span className="text-[10px] font-medium uppercase tracking-wider text-primary">
+                    {user?.role ? ROLE_LABEL[user.role] : "Member"}
+                  </span>
+                </div>
+                
+                <Link 
+                  to={user?.role ? ROLE_HOME[user.role] : "/login"}
+                  className="group inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-all duration-300 hover:opacity-90 shadow-sm"
+                >
+                  Dashboard
+                  <LayoutDashboard className="h-3.5 w-3.5" />
+                </Link>
+
+                <div className="h-8 w-px bg-border mx-1" />
+                
+                <button 
+                  onClick={() => logout()}
+                  className="flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground hover:bg-destructive-soft hover:text-destructive transition-colors"
+                  title="Logout"
+                >
+                  <LogOut className="h-4 w-4" />
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -340,6 +384,8 @@ function Navbar() {
 
 // HERO
 function Hero() {
+  const { user, authenticated } = useAuth();
+  const navigate = useNavigate();
   const workers = useCountUp(1.2, { decimals: 1, duration: 1600 });
 
   const heroContainer = {
@@ -398,16 +444,20 @@ function Hero() {
             variants={heroItem}
             className="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row"
           >
-            <MagneticButton className="group inline-flex items-center gap-2 rounded-xl bg-gradient-to-b from-primary to-primary/90 px-6 py-3.5 text-sm font-semibold text-primary-foreground shadow-lg shadow-primary/30 ring-1 ring-inset ring-white/20 transition-shadow duration-300 hover:shadow-xl hover:shadow-primary/40">
-              Open dashboard
+            <MagneticButton 
+              onClick={() => navigate({ to: authenticated ? (user?.role ? ROLE_HOME[user.role] : "/login") : "/login" })}
+              className="group inline-flex items-center gap-2 rounded-xl bg-gradient-to-b from-primary to-primary/90 px-6 py-3.5 text-sm font-semibold text-primary-foreground shadow-lg shadow-primary/30 ring-1 ring-inset ring-white/20 transition-shadow duration-300 hover:shadow-xl hover:shadow-primary/40"
+            >
+              {authenticated ? "Open dashboard" : "Get started now"}
               <ArrowRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" />
             </MagneticButton>
             <MagneticButton
               strength={0.2}
+              onClick={() => navigate({ to: "/login" })}
               className="group inline-flex items-center gap-2 rounded-xl border border-border bg-surface/60 px-6 py-3.5 text-sm font-semibold text-foreground backdrop-blur transition-colors duration-300 hover:bg-accent"
             >
               <ShieldCheck className="h-4 w-4 text-primary" />
-              Explore as Verifier
+              {authenticated ? "View Insights" : "Explore as Verifier"}
             </MagneticButton>
           </motion.div>
 
@@ -830,6 +880,8 @@ function Roles() {
 
 // CTA
 function CTA() {
+  const { user, authenticated } = useAuth();
+  const navigate = useNavigate();
   const workers = useCountUp(1.2, { decimals: 1 });
 
   return (
@@ -853,8 +905,11 @@ function CTA() {
           workers using FairGig to take control of their income.
         </p>
         <div className="mt-8 flex justify-center">
-          <MagneticButton className="group inline-flex items-center gap-2 rounded-xl bg-surface px-6 py-3.5 text-sm font-semibold text-foreground shadow-lg transition-shadow duration-300">
-            Get started
+          <MagneticButton 
+            onClick={() => navigate({ to: authenticated ? (user?.role ? ROLE_HOME[user.role] : "/login") : "/login" })}
+            className="group inline-flex items-center gap-2 rounded-xl bg-surface px-6 py-3.5 text-sm font-semibold text-foreground shadow-lg transition-shadow duration-300"
+          >
+            {authenticated ? "Open dashboard" : "Get started"}
             <ArrowRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" />
           </MagneticButton>
         </div>

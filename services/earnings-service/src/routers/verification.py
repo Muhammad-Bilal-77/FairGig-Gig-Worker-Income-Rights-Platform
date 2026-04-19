@@ -121,7 +121,7 @@ async def list_pending_verification(
     return {'success': True, 'data': [dict(row) for row in rows]}
 
 
-@router.get('/shifts/submissions')
+@router.get('/verifier/submissions')
 async def list_submissions(
     statuses: str | None = Query(
         default=None,
@@ -257,6 +257,7 @@ async def list_submissions(
             'offset': offset,
         },
     }
+
 
 
 @router.get('/verifier/stats')

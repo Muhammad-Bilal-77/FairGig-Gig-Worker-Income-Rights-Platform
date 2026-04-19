@@ -151,6 +151,8 @@ async def root():
                 "vulnerability_flags": "GET /api/analytics/vulnerability-flags",
                 "top_complaints": "GET /api/analytics/top-complaints",
                 "summary": "GET /api/analytics/summary",
+                "health_index": "GET /api/analytics/health-index",
+                "correlations": "GET /api/analytics/correlations",
                 "refresh": "POST /api/analytics/refresh (advocate only)",
             },
             "docs": "/docs",

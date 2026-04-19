@@ -59,6 +59,7 @@ async def list_shifts_endpoint(
     return {'success': True, 'data': shifts}
 
 
+
 @router.get('/shifts/{shift_id}')
 async def get_shift_endpoint(
     shift_id: UUID,

@@ -3,12 +3,27 @@
  * Handles JWT tokens, refresh, and request/response intercepting
  */
 
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:4001';
-const EARNINGS_API_BASE = import.meta.env.VITE_EARNINGS_API_URL || 'http://localhost:4002';
-const ANOMALY_API_BASE = import.meta.env.VITE_ANOMALY_API_URL || 'http://localhost:4003';
-const CERTIFICATE_API_BASE = import.meta.env.VITE_CERTIFICATE_API_URL || 'http://localhost:4006';
-export const GRIEVANCE_API_BASE = import.meta.env.VITE_GRIEVANCE_API_URL || 'http://localhost:4004';
-const ANALYTICS_API_BASE = import.meta.env.VITE_ANALYTICS_API_URL || 'http://localhost:4005';
+// In production/ngrok, we route everything through the Nginx gateway at /api
+// This solves CORS issues and allows single-tunnel deployment
+// Unified Gateway Routing: All traffic goes through port 80 (Nginx Gateway)
+// This ensures that when accessed via tunnels, the browser always talks to the correct host
+const GATEWAY_BASE = typeof window !== 'undefined' ? window.location.origin : '';
+
+// Service prefixes
+const AUTH_PREFIX = '/api/auth';
+const EARNINGS_PREFIX = '/api/earnings';
+const ANOMALY_PREFIX = '/api/anomaly';
+const GRIEVANCE_PREFIX = '/api/grievance';
+const ANALYTICS_PREFIX = '/api/analytics';
+const CERTIFICATE_PREFIX = '/api/certificates';
+
+// Exported for compatibility with components like NotificationBell
+export const AUTH_API_BASE = `${GATEWAY_BASE}${AUTH_PREFIX}`;
+export const EARNINGS_API_BASE = `${GATEWAY_BASE}${EARNINGS_PREFIX}`;
+export const ANOMALY_API_BASE = `${GATEWAY_BASE}${ANOMALY_PREFIX}`;
+export const GRIEVANCE_API_BASE = `${GATEWAY_BASE}${GRIEVANCE_PREFIX}`;
+export const ANALYTICS_API_BASE = `${GATEWAY_BASE}${ANALYTICS_PREFIX}`;
+export const CERTIFICATE_API_BASE = `${GATEWAY_BASE}${CERTIFICATE_PREFIX}`;
 
 export interface ApiError {
   error: string;
@@ -173,7 +188,7 @@ async function refreshAccessToken(): Promise<string | null> {
   }
 
   try {
-    const response = await fetch(`${API_BASE}/api/auth/refresh`, {
+    const response = await fetch(`${GATEWAY_BASE}/api/auth/refresh`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ refresh_token: tokens.refresh_token }),
@@ -199,7 +214,7 @@ async function apiRequest(
 ): Promise<any> {
   const { requiresAuth = false, ...fetchOptions } = options;
 
-  let url = `${API_BASE}${endpoint}`;
+  let url = `${GATEWAY_BASE}${endpoint}`;
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     ...(fetchOptions.headers as Record<string, string>),
@@ -250,7 +265,7 @@ async function earningsRequest(
 ): Promise<any> {
   const { requiresAuth = true, ...fetchOptions } = options;
 
-  let url = `${EARNINGS_API_BASE}${endpoint}`;
+  let url = `${GATEWAY_BASE}${endpoint}`;
   const headers: Record<string, string> = {
     ...(fetchOptions.headers as Record<string, string>),
   };
@@ -305,7 +320,7 @@ async function certificateRequest(
 ): Promise<any> {
   const { requiresAuth = true, ...fetchOptions } = options;
 
-  let url = `${CERTIFICATE_API_BASE}${endpoint}`;
+  let url = `${GATEWAY_BASE}${endpoint}`;
   const headers: HeadersInit = {
     ...fetchOptions.headers,
   };
@@ -357,7 +372,7 @@ async function anomalyRequest(
 ): Promise<any> {
   const { requiresAuth = true, ...fetchOptions } = options;
 
-  let url = `${ANOMALY_API_BASE}${endpoint}`;
+  let url = `${GATEWAY_BASE}${endpoint}`;
   const headers: HeadersInit = {
     ...fetchOptions.headers,
   };
@@ -409,7 +424,7 @@ async function grievanceRequest(
 ): Promise<any> {
   const { requiresAuth = false, ...fetchOptions } = options;
 
-  let url = `${GRIEVANCE_API_BASE}${endpoint}`;
+  let url = `${GATEWAY_BASE}${endpoint}`;
   const headers: HeadersInit = {
     ...fetchOptions.headers,
   };
@@ -467,7 +482,7 @@ async function analyticsRequest(
 ): Promise<any> {
   const { requiresAuth = true, ...fetchOptions } = options;
 
-  let url = `${ANALYTICS_API_BASE}${endpoint}`;
+  let url = `${GATEWAY_BASE}${endpoint}`;
   const headers: HeadersInit = {
     ...fetchOptions.headers,
   };
@@ -538,6 +553,8 @@ export const api = {
       if (params?.weeks) q.append('weeks', params.weeks.toString());
       return analyticsRequest(`/api/analytics/top-complaints${q.toString() ? '?' + q.toString() : ''}`);
     },
+    getPlatformHealth: () => analyticsRequest('/api/analytics/health-index'),
+    getCorrelations: () => analyticsRequest('/api/analytics/correlations'),
     refresh: () => analyticsRequest('/api/analytics/refresh', { method: 'POST' }),
   },
   // Auth endpoints
@@ -752,7 +769,7 @@ export const api = {
       if (typeof params?.limit === 'number') query.append('limit', String(params.limit));
       if (typeof params?.offset === 'number') query.append('offset', String(params.offset));
 
-      return earningsRequest(`/api/earnings/shifts/submissions${query.toString() ? '?' + query.toString() : ''}`, {
+      return earningsRequest(`/api/earnings/verifier/submissions${query.toString() ? '?' + query.toString() : ''}`, {
         method: 'GET',
         requiresAuth: true,
       });
@@ -800,7 +817,7 @@ export const api = {
 
     getViewUrl: (certRef: string, download = false, type?: string) => {
       const token = getAccessToken();
-      const baseUrl = `${CERTIFICATE_API_BASE}/api/certificates/${encodeURIComponent(certRef)}`;
+      const baseUrl = `${GATEWAY_BASE}/api/certificates/${encodeURIComponent(certRef)}`;
       const queryParams = new URLSearchParams();
       if (token) queryParams.append('token', token);
       if (download) queryParams.append('download', '1');

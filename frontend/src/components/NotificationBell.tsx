@@ -29,7 +29,7 @@ export function NotificationBell() {
     const token = getAccessToken();
     if (!token) return;
 
-    const wsUrl = new URL(`${GRIEVANCE_API_BASE}/api/grievance/ws/notifications`);
+    const wsUrl = new URL(`${GRIEVANCE_API_BASE}/ws/notifications`);
     wsUrl.protocol = wsUrl.protocol === "https:" ? "wss:" : "ws:";
     wsUrl.searchParams.set("token", token);
 

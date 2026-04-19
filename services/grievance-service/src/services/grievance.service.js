@@ -300,38 +300,41 @@ export async function addTag(client, complaintId, advocateId, tag) {
 }
 
 /**
- * Update complaint status (escalate or resolve)
+ * Update complaint status
  * @param {object} client - DB client
  * @param {string} complaintId - Complaint ID
  * @param {string} advocateId - Advocate user ID
- * @param {string} newStatus - 'ESCALATED' or 'RESOLVED'
+ * @param {string} newStatus - 'OPEN', 'REVIEWING', 'ESCALATED', 'RESOLVED', 'REJECTED', 'BANNED'
  * @returns {object} Updated complaint
  */
 export async function updateStatus(client, complaintId, advocateId, newStatus) {
-  if (!['ESCALATED', 'RESOLVED'].includes(newStatus)) {
-    const err = new Error('Invalid status');
+  const allowed = ['OPEN', 'REVIEWING', 'ESCALATED', 'RESOLVED', 'REJECTED', 'BANNED'];
+  if (!allowed.includes(newStatus)) {
+    const err = new Error(`Invalid status: ${newStatus}`);
     err.status = 400;
     throw err;
   }
   
-  let updateSql = '';
-  let params = [];
-  
+  let query = 'UPDATE grievance_schema.complaints SET status = $1, updated_at = NOW()';
+  let params = [newStatus];
+  let pIndex = 2;
+
   if (newStatus === 'ESCALATED') {
-    updateSql = `UPDATE grievance_schema.complaints
-                 SET status = $1, escalated_by = $2, escalated_at = NOW()
-                 WHERE id = $3`;
-    params = ['ESCALATED', advocateId, complaintId];
-  } else {
-    updateSql = `UPDATE grievance_schema.complaints
-                 SET status = $1, resolved_by = $2, resolved_at = NOW()
-                 WHERE id = $3`;
-    params = ['RESOLVED', advocateId, complaintId];
+    query += `, escalated_by = $${pIndex++}, escalated_at = NOW()`;
+    params.push(advocateId);
+  } else if (newStatus === 'RESOLVED') {
+    query += `, resolved_by = $${pIndex++}, resolved_at = NOW()`;
+    params.push(advocateId);
   }
+
+  query += ` WHERE id = $${pIndex}`;
+  params.push(complaintId);
   
-  const result = await client.query(updateSql, params);
+  await client.query(query, params);
   
-  escalationCounter.labels(newStatus === 'ESCALATED' ? 'escalate' : 'resolve').inc();
+  if (['ESCALATED', 'RESOLVED'].includes(newStatus)) {
+    escalationCounter.labels(newStatus === 'ESCALATED' ? 'escalate' : 'resolve').inc();
+  }
   
   // Return updated complaint
   return getComplaint(client, complaintId);

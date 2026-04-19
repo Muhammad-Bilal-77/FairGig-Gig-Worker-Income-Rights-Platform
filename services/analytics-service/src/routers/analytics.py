@@ -9,6 +9,8 @@ from ..services.analytics_service import (
     get_top_complaints,
     get_summary,
     refresh_all_views,
+    get_platform_health,
+    get_system_correlation,
 )
 from ..models import (
     CommissionTrendsResponse,
@@ -17,6 +19,8 @@ from ..models import (
     TopComplaintsResponse,
     SummaryResponse,
     RefreshResponse,
+    PlatformHealthResponse,
+    SystemCorrelationResponse,
 )
 import logging
 
@@ -149,6 +153,28 @@ async def summary(
     except Exception as e:
         logger.error(f"Error fetching summary: {e}")
         raise HTTPException(status_code=500, detail="Failed to fetch summary")
+
+@router.get("/health-index", response_model=PlatformHealthResponse)
+async def platform_health(
+    token: dict = Depends(require_advocate_or_verifier),
+):
+    """Get metrics for platform health radar chart"""
+    try:
+        return await get_platform_health()
+    except Exception as e:
+        logger.error(f"Error fetching health index: {e}")
+        raise HTTPException(status_code=500, detail="Failed to fetch health index")
+
+@router.get("/correlations", response_model=SystemCorrelationResponse)
+async def system_correlation(
+    token: dict = Depends(require_advocate_or_verifier),
+):
+    """Get income vs complaints correlation data"""
+    try:
+        return await get_system_correlation()
+    except Exception as e:
+        logger.error(f"Error fetching correlations: {e}")
+        raise HTTPException(status_code=500, detail="Failed to fetch correlations")
 
 @router.post("/refresh", response_model=RefreshResponse)
 async def refresh(

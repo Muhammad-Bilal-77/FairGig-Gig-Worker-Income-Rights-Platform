@@ -37,7 +37,7 @@ class Config:
     log_level = os.getenv("LOG_LEVEL", "info").upper()
     
     # K-anonymity threshold
-    k_anonymity_threshold = 5
+    k_anonymity_threshold = int(os.getenv("K_ANONYMITY_THRESHOLD", "5"))
     
     # View refresh schedule (minutes)
     view_refresh_interval = int(os.getenv("VIEW_REFRESH_INTERVAL", "15"))
