@@ -8,6 +8,7 @@ const EARNINGS_API_BASE = import.meta.env.VITE_EARNINGS_API_URL || 'http://local
 const ANOMALY_API_BASE = import.meta.env.VITE_ANOMALY_API_URL || 'http://localhost:4003';
 const CERTIFICATE_API_BASE = import.meta.env.VITE_CERTIFICATE_API_URL || 'http://localhost:4006';
 export const GRIEVANCE_API_BASE = import.meta.env.VITE_GRIEVANCE_API_URL || 'http://localhost:4004';
+const ANALYTICS_API_BASE = import.meta.env.VITE_ANALYTICS_API_URL || 'http://localhost:4005';
 
 export interface ApiError {
   error: string;
@@ -460,7 +461,85 @@ async function grievanceRequest(
   return response.json();
 }
 
+async function analyticsRequest(
+  endpoint: string,
+  options: RequestInit & { requiresAuth?: boolean } = {}
+): Promise<any> {
+  const { requiresAuth = true, ...fetchOptions } = options;
+
+  let url = `${ANALYTICS_API_BASE}${endpoint}`;
+  const headers: HeadersInit = {
+    ...fetchOptions.headers,
+  };
+
+  if (!(fetchOptions.body instanceof FormData)) {
+    headers['Content-Type'] = 'application/json';
+  }
+
+  if (requiresAuth) {
+    let token = getAccessToken();
+
+    if (!token) {
+      token = await refreshAccessToken();
+    }
+    if (!token) {
+      throw new Error('Authentication required');
+    }
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
+  let response = await fetch(url, {
+    ...fetchOptions,
+    headers,
+  });
+
+  if (response.status === 401 && requiresAuth && getTokens()?.refresh_token) {
+    const newToken = await refreshAccessToken();
+    if (newToken) {
+      headers['Authorization'] = `Bearer ${newToken}`;
+      response = await fetch(url, {
+        ...fetchOptions,
+        headers,
+      });
+    }
+  }
+
+  if (!response.ok) {
+    const error: ApiError = await response.json().catch(() => ({
+      error: `HTTP ${response.status}: ${response.statusText}`,
+    }));
+    throw { status: response.status, ...error };
+  }
+
+  if (response.status === 204 || response.headers.get('content-length') === '0') {
+    return null;
+  }
+
+  return response.json();
+}
+
 export const api = {
+  analytics: {
+    getSummary: () => analyticsRequest('/api/analytics/summary'),
+    getCommissionTrends: (params?: { platform?: string; weeks?: number }) => {
+      const q = new URLSearchParams();
+      if (params?.platform) q.append('platform', params.platform);
+      if (params?.weeks) q.append('weeks', params.weeks.toString());
+      return analyticsRequest(`/api/analytics/commission-trends${q.toString() ? '?' + q.toString() : ''}`);
+    },
+    getIncomeDistribution: (params?: { city_zone?: string }) => {
+      const q = new URLSearchParams();
+      if (params?.city_zone) q.append('city_zone', params.city_zone);
+      return analyticsRequest(`/api/analytics/income-distribution${q.toString() ? '?' + q.toString() : ''}`);
+    },
+    getVulnerabilityFlags: () => analyticsRequest('/api/analytics/vulnerability-flags'),
+    getTopComplaints: (params?: { weeks?: number }) => {
+      const q = new URLSearchParams();
+      if (params?.weeks) q.append('weeks', params.weeks.toString());
+      return analyticsRequest(`/api/analytics/top-complaints${q.toString() ? '?' + q.toString() : ''}`);
+    },
+    refresh: () => analyticsRequest('/api/analytics/refresh', { method: 'POST' }),
+  },
   // Auth endpoints
   signup: (data: {
     email: string;
@@ -751,6 +830,13 @@ export const api = {
 
     getComplaint: (id: string) =>
       grievanceRequest(`/api/grievance/complaints/${id}`),
+
+    updateComplaintStatus: (id: string, status: string) =>
+      grievanceRequest(`/api/grievance/complaints/${id}/status`, {
+        method: 'PATCH',
+        body: JSON.stringify({ status }),
+        requiresAuth: true,
+      }),
 
     createComplaint: (data: {
       platform: string;
