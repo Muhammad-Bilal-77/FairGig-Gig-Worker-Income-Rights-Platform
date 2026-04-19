@@ -13,6 +13,53 @@ export const Route = createFileRoute("/app/verifier/workers")({
   component: VerifierWorkersPage,
 });
 
+const MOCK_WORKERS: WorkerAccount[] = [
+  {
+    id: "wrk_01j7p8q2v5x9z1a4b7c3d6e9",
+    full_name: "Adeel Ahmad",
+    email: "adeel.ahmad@example.com",
+    role: "worker",
+    city: "Lahore",
+    city_zone: "Gulberg",
+    is_active: true,
+    last_login_at: new Date(Date.now() - 3600000).toISOString(),
+    created_at: new Date(Date.now() - 86400000 * 30).toISOString(),
+  },
+  {
+    id: "wrk_01j7p8q2v5x9z1a4b7c3d6e8",
+    full_name: "Fatima Noor",
+    email: "fatima.noor@example.com",
+    role: "worker",
+    city: "Karachi",
+    city_zone: "DHA Phase 6",
+    is_active: true,
+    last_login_at: new Date(Date.now() - 172800000).toISOString(),
+    created_at: new Date(Date.now() - 86400000 * 45).toISOString(),
+  },
+  {
+    id: "wrk_01j7p8q2v5x9z1a4b7c3d6e7",
+    full_name: "Zain Ali",
+    email: "zain.ali@example.com",
+    role: "worker",
+    city: "Islamabad",
+    city_zone: "F-7",
+    is_active: false,
+    last_login_at: new Date(Date.now() - 604800000).toISOString(),
+    created_at: new Date(Date.now() - 86400000 * 60).toISOString(),
+  },
+  {
+    id: "wrk_01j7p8q2v5x9z1a4b7c3d6e6",
+    full_name: "Mariam Khan",
+    email: "mariam.khan@example.com",
+    role: "worker",
+    city: "Faisalabad",
+    city_zone: "Civil Lines",
+    is_active: true,
+    last_login_at: new Date(Date.now() - 86400000).toISOString(),
+    created_at: new Date(Date.now() - 86400000 * 15).toISOString(),
+  },
+];
+
 function VerifierWorkersPage() {
   const [workers, setWorkers] = useState<WorkerAccount[]>([]);
   const [search, setSearch] = useState("");
@@ -55,10 +102,18 @@ function VerifierWorkersPage() {
         limit: 200,
       });
 
-      setWorkers(response.data || []);
+      if (response && response.data) {
+        setWorkers(response.data);
+      } else {
+        // API returned success but no data or invalid format - use mock as fallback
+        setWorkers(MOCK_WORKERS.filter(w => includeInactive || w.is_active));
+        setError("API returned no data. Displaying mock data for demonstration.");
+      }
     } catch (err: any) {
       console.error("Failed to load workers", err);
-      setError(err?.message || err?.error || "Could not load workers.");
+      // Fallback to mock data on error
+      setWorkers(MOCK_WORKERS.filter(w => includeInactive || w.is_active));
+      setError(`Notice: Using dummy data because the API returned: ${err?.message || "Connection Error"}`);
     } finally {
       setIsLoading(false);
       setIsRefreshing(false);

@@ -419,6 +419,11 @@ export default async function authRoutes(fastify) {
       },
     },
   }, async (request, reply) => {
+    request.log.info({
+      include_inactive: request.query.include_inactive,
+      search: request.query.search,
+    }, 'Listing workers for verifier');
+
     const workers = await listWorkersForVerifier({
       includeInactive: Boolean(request.query.include_inactive),
       search: request.query.search || null,

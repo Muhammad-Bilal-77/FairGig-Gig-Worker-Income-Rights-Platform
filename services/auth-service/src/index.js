@@ -24,7 +24,7 @@ async function buildApp() {
     // Serialize dates as ISO strings not epoch numbers
     ajv: {
       customOptions: {
-        coerceTypes:   'array',
+        coerceTypes:   true, // Coerce strings to numbers/booleans in query/params
         removeAdditional: true,
         useDefaults:   true,
       },
@@ -89,14 +89,7 @@ async function buildApp() {
     });
   });
 
-  // ── 404 handler ───────────────────────────────────────
-  fastify.setNotFoundHandler((request, reply) => {
-    reply.status(404).send({
-      error:  'Not Found',
-      method: request.method,
-      path:   request.url,
-    });
-  });
+
 
   // ── Plugin registration (ORDER MATTERS) ───────────────
   await fastify.register(corsPlugin);
@@ -105,6 +98,22 @@ async function buildApp() {
   // ── Route registration ────────────────────────────────
   await fastify.register(authRoutes,     { prefix: '/api/auth' });
   await fastify.register(internalRoutes);
+
+  // ── 404 handler (MUST be last) ─────────────────────────
+  fastify.setNotFoundHandler((request, reply) => {
+    fastify.log.warn({
+      method: request.method,
+      url:    request.url,
+      ip:     request.ip,
+    }, 'Route not found');
+
+    reply.status(404).send({
+      error:  'Not Found',
+      message: `Route ${request.method} ${request.url} not found on this server`,
+      method: request.method,
+      path:   request.url,
+    });
+  });
 
   return fastify;
 }
